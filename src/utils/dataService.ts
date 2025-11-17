@@ -1,4 +1,4 @@
-import { Product, Purchase, Sale, DashboardStats, MultiPurchase, Packaging, PackagingPurchase, Expense, License, InventoryRecord, Settings, UserLot } from '../types';
+import { Product, Purchase, Sale, DashboardStats, MultiPurchase, Packaging, PackagingPurchase, Expense, License, InventoryRecord, Settings, UserLot, StockSalesCalculation } from '../types';
 import { supabaseService } from './supabaseService';
 import { indexedDBService } from './indexedDBService';
 import { enhancedSyncService } from './enhancedSyncService';
@@ -712,4 +712,23 @@ const triggerSync = (): void => {
   } catch (error) {
     console.warn('Erreur lors du déclenchement de la synchronisation:', error);
   }
+};
+
+export const getStockSalesCalculations = async (): Promise<StockSalesCalculation[]> => {
+  return await indexedDBService.getAllData<StockSalesCalculation>('stock_sales_calculations');
+};
+
+export const addStockSalesCalculation = async (calculation: StockSalesCalculation): Promise<void> => {
+  await indexedDBService.saveData('stock_sales_calculations', calculation);
+  triggerSync();
+};
+
+export const updateStockSalesCalculation = async (calculation: StockSalesCalculation): Promise<void> => {
+  await indexedDBService.saveData('stock_sales_calculations', calculation);
+  triggerSync();
+};
+
+export const deleteStockSalesCalculation = async (calculationId: string): Promise<void> => {
+  await indexedDBService.deleteData('stock_sales_calculations', calculationId);
+  triggerSync();
 };

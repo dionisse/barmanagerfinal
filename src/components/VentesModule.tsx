@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, Sale, Product } from '../types';
-import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, Edit, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale } from '../utils/dataService';
+import { User, Sale, Product, StockSalesCalculation } from '../types';
+import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, Edit, AlertTriangle, CheckCircle, XCircle, Calculator } from 'lucide-react';
+import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale, getStockSalesCalculations, addStockSalesCalculation, deleteStockSalesCalculation } from '../utils/dataService';
 import { generateInvoicePDF, autoGenerateSimpleInvoice } from '../utils/pdfService';
 import { emecefService } from '../utils/emecefService';
 import { getSettings } from '../utils/dataService';
@@ -27,6 +27,9 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [currentInvoiceNumber, setCurrentInvoiceNumber] = useState('');
+  const [activeTab, setActiveTab] = useState<'pos' | 'stock-calc'>('pos');
+  const [stockCalculations, setStockCalculations] = useState<StockSalesCalculation[]>([]);
+  const [showStockCalcForm, setShowStockCalcForm] = useState(false);
   const [formData, setFormData] = useState({
     client: '',
     produitId: '',
@@ -37,6 +40,15 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     quantite: '',
     prixUnitaire: ''
   });
+  const [stockCalcFormData, setStockCalcFormData] = useState({
+    productId: '',
+    initialStock: '',
+    finalStock: '',
+    damaged: '0',
+    broken: '0',
+    leaking: '0',
+    notes: ''
+  });
 
   useEffect(() => {
     loadData();
@@ -46,8 +58,10 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
   const loadData = async () => {
     const salesData = await getSales();
     const productsData = await getProducts();
+    const stockCalcData = await getStockSalesCalculations();
     setSales(salesData);
     setProducts(productsData);
+    setStockCalculations(stockCalcData);
   };
 
   const generateInvoiceNumber = () => {
@@ -325,6 +339,78 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     }
   };
 
+  const calculateQuantitySold = () => {
+    const initial = parseInt(stockCalcFormData.initialStock || '0');
+    const final = parseInt(stockCalcFormData.finalStock || '0');
+    const damaged = parseInt(stockCalcFormData.damaged || '0');
+    const broken = parseInt(stockCalcFormData.broken || '0');
+    const leaking = parseInt(stockCalcFormData.leaking || '0');
+
+    return final - initial - (damaged + broken + leaking);
+  };
+
+  const handleStockCalcSubmit = async () => {
+    if (!stockCalcFormData.productId || !stockCalcFormData.initialStock || !stockCalcFormData.finalStock) {
+      alert('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    const selectedProduct = products.find(p => p.id === stockCalcFormData.productId);
+    if (!selectedProduct) return;
+
+    const quantitySold = calculateQuantitySold();
+
+    const newCalculation: StockSalesCalculation = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      date: new Date().toISOString().split('T')[0],
+      productId: stockCalcFormData.productId,
+      productName: selectedProduct.nom,
+      initialStock: parseInt(stockCalcFormData.initialStock),
+      finalStock: parseInt(stockCalcFormData.finalStock),
+      damaged: parseInt(stockCalcFormData.damaged || '0'),
+      broken: parseInt(stockCalcFormData.broken || '0'),
+      leaking: parseInt(stockCalcFormData.leaking || '0'),
+      quantitySold: quantitySold,
+      notes: stockCalcFormData.notes,
+      createdAt: new Date().toISOString(),
+      createdBy: user.username
+    };
+
+    try {
+      await addStockSalesCalculation(newCalculation);
+      alert('Calcul de ventes enregistré avec succès !');
+      setStockCalcFormData({
+        productId: '',
+        initialStock: '',
+        finalStock: '',
+        damaged: '0',
+        broken: '0',
+        leaking: '0',
+        notes: ''
+      });
+      setShowStockCalcForm(false);
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement:', error);
+      alert('Erreur lors de l\'enregistrement du calcul');
+    }
+  };
+
+  const handleDeleteStockCalc = async (calcId: string) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce calcul ?')) {
+      return;
+    }
+
+    try {
+      await deleteStockSalesCalculation(calcId);
+      alert('Calcul supprimé avec succès !');
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert('Erreur lors de la suppression du calcul');
+    }
+  };
+
   const filteredSales = sales.filter(sale =>
     sale.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sale.produitNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -341,15 +427,57 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
           <p className="text-gray-600 mt-2">Gestion des ventes et facturation</p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (activeTab === 'pos') {
+              setShowForm(!showForm);
+            } else {
+              setShowStockCalcForm(!showStockCalcForm);
+            }
+          }}
           className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
         >
           <Plus className="h-5 w-5" />
-          <span>{showForm ? 'Masquer POS' : 'Ouvrir POS'}</span>
+          <span>
+            {activeTab === 'pos'
+              ? (showForm ? 'Masquer POS' : 'Ouvrir POS')
+              : (showStockCalcForm ? 'Masquer Formulaire' : 'Nouveau Calcul')
+            }
+          </span>
         </button>
       </div>
 
-      {showForm && (
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => setActiveTab('pos')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'pos'
+                ? 'border-green-600 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <ShoppingCart className="h-5 w-5" />
+              <span>Point de Vente</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('stock-calc')}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'stock-calc'
+                ? 'border-green-600 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <Calculator className="h-5 w-5" />
+              <span>Calcul Ventes par Stock</span>
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'pos' && showForm && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-lg">
@@ -562,6 +690,248 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
         </div>
       )}
 
+      {activeTab === 'stock-calc' && showStockCalcForm && (
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Calcul de Ventes par Stock</h3>
+          <p className="text-sm text-gray-600 mb-6">
+            Formule: Stock Final - Stock Initial - (Endommagés + Cassés + Fuyants) = Quantité Vendue
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Produit <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={stockCalcFormData.productId}
+                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, productId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="">Sélectionner un produit</option>
+                {products.map(product => (
+                  <option key={product.id} value={product.id}>
+                    {product.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Stock Initial <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={stockCalcFormData.initialStock}
+                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, initialStock: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                min="0"
+                placeholder="Stock au début"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Stock Final (après inventaire) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                value={stockCalcFormData.finalStock}
+                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, finalStock: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                min="0"
+                placeholder="Stock après comptage"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantité Endommagée
+              </label>
+              <input
+                type="number"
+                value={stockCalcFormData.damaged}
+                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, damaged: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                min="0"
+                placeholder="Articles endommagés"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantité Cassée
+              </label>
+              <input
+                type="number"
+                value={stockCalcFormData.broken}
+                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, broken: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                min="0"
+                placeholder="Articles cassés"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantité Fuyante
+              </label>
+              <input
+                type="number"
+                value={stockCalcFormData.leaking}
+                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, leaking: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                min="0"
+                placeholder="Articles fuyants"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notes
+              </label>
+              <textarea
+                value={stockCalcFormData.notes}
+                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, notes: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                rows={2}
+                placeholder="Observations (optionnel)"
+              />
+            </div>
+          </div>
+
+          {stockCalcFormData.initialStock && stockCalcFormData.finalStock && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <span className="text-green-800 font-medium">Quantité Vendue Calculée:</span>
+                <span className="text-2xl font-bold text-green-600">
+                  {calculateQuantitySold()} unités
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => {
+                setShowStockCalcForm(false);
+                setStockCalcFormData({
+                  productId: '',
+                  initialStock: '',
+                  finalStock: '',
+                  damaged: '0',
+                  broken: '0',
+                  leaking: '0',
+                  notes: ''
+                });
+              }}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleStockCalcSubmit}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Enregistrer le Calcul
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'stock-calc' && !showStockCalcForm && (
+        <div className="bg-white rounded-xl shadow-lg mb-8">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Historique des Calculs</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Produit
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Stock Initial
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Stock Final
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pertes
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quantité Vendue
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Notes
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {stockCalculations.map((calc) => (
+                  <tr key={calc.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(calc.date).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {calc.productName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {calc.initialStock}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {calc.finalStock}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="text-red-600">
+                        {calc.damaged + calc.broken + calc.leaking}
+                        {(calc.damaged > 0 || calc.broken > 0 || calc.leaking > 0) && (
+                          <div className="text-xs text-gray-500">
+                            (E:{calc.damaged} C:{calc.broken} F:{calc.leaking})
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                      {calc.quantitySold}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {calc.notes || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleDeleteStockCalc(calc.id)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {stockCalculations.length === 0 && (
+            <div className="p-8 text-center">
+              <Calculator className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-gray-500">Aucun calcul enregistré</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Utilisez le bouton "Nouveau Calcul" pour commencer
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Modal de modification de vente */}
       {showEditModal && editingSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -650,13 +1020,14 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-lg">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
+      {activeTab === 'pos' && (
+        <div className="bg-white rounded-xl shadow-lg">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
                 placeholder="Rechercher par client, produit ou facture..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -773,7 +1144,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
             <p className="text-gray-500">Aucune vente trouvée</p>
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

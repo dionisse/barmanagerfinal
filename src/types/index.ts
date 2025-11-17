@@ -176,3 +176,19 @@ export interface Settings {
     frequence: string;
   };
 }
+
+export interface StockSalesCalculation {
+  id: string;
+  date: string;
+  productId: string;
+  productName: string;
+  initialStock: number;
+  finalStock: number;
+  damaged: number;
+  broken: number;
+  leaking: number;
+  quantitySold: number;
+  notes: string;
+  createdAt: string;
+  createdBy: string;
+}

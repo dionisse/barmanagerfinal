@@ -69,11 +69,16 @@ interface GobexDB extends DBSchema {
     value: any;
     indexes: { 'by-id': string, 'by-username': string };
   };
+  stock_sales_calculations: {
+    key: string;
+    value: any;
+    indexes: { 'by-id': string };
+  };
 }
 
 export class IndexedDBService {
   private dbName = 'gobex-db';
-  private dbVersion = 3;
+  private dbVersion = 4;
   private db: IDBPDatabase<GobexDB> | null = null;
   private debugMode = true;
 
@@ -171,8 +176,17 @@ export class IndexedDBService {
               db.deleteObjectStore('settings');
             }
             db.createObjectStore('settings', { keyPath: 'key' });
-            
+
             this.logDebug('Store settings recréé avec keyPath correct');
+          }
+
+          // Version 4 - Ajouter le store pour les calculs de ventes basés sur le stock
+          if (oldVersion < 4) {
+            if (!db.objectStoreNames.contains('stock_sales_calculations')) {
+              const stockSalesStore = db.createObjectStore('stock_sales_calculations', { keyPath: 'id' });
+              stockSalesStore.createIndex('by-id', 'id');
+              this.logDebug('Store stock_sales_calculations créé');
+            }
           }
         },
       });
