@@ -125,7 +125,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               </div>
               <p className="text-blue-700 text-xs">
                 Les utilisateurs Gestionnaire et Employé doivent avoir une licence active pour accéder au système.
-                Le propriétaire a un accès permanent.
               </p>
             </div>
 
