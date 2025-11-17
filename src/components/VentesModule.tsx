@@ -50,10 +50,46 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     notes: ''
   });
 
+  interface ProductRow {
+    productId: string;
+    productName: string;
+    initialStock: string;
+    finalStock: string;
+    damaged: string;
+    broken: string;
+    leaking: string;
+    quantitySold: number;
+  }
+
+  const [productRows, setProductRows] = useState<ProductRow[]>([]);
+
   useEffect(() => {
     loadData();
     generateInvoiceNumber();
+    initializeProductRows();
   }, []);
+
+  useEffect(() => {
+    if (products.length > 0 && productRows.length === 0) {
+      initializeProductRows();
+    }
+  }, [products]);
+
+  const initializeProductRows = () => {
+    if (products.length > 0) {
+      const rows: ProductRow[] = products.map(product => ({
+        productId: product.id,
+        productName: product.nom,
+        initialStock: '',
+        finalStock: '',
+        damaged: '0',
+        broken: '0',
+        leaking: '0',
+        quantitySold: 0
+      }));
+      setProductRows(rows);
+    }
+  };
 
   const loadData = async () => {
     const salesData = await getSales();
@@ -347,6 +383,66 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     const leaking = parseInt(stockCalcFormData.leaking || '0');
 
     return final - initial - (damaged + broken + leaking);
+  };
+
+  const calculateRowQuantitySold = (row: ProductRow): number => {
+    const initial = parseInt(row.initialStock || '0');
+    const final = parseInt(row.finalStock || '0');
+    const damaged = parseInt(row.damaged || '0');
+    const broken = parseInt(row.broken || '0');
+    const leaking = parseInt(row.leaking || '0');
+
+    return final - initial - (damaged + broken + leaking);
+  };
+
+  const updateProductRow = (index: number, field: keyof ProductRow, value: string) => {
+    const updatedRows = [...productRows];
+    updatedRows[index] = { ...updatedRows[index], [field]: value };
+    updatedRows[index].quantitySold = calculateRowQuantitySold(updatedRows[index]);
+    setProductRows(updatedRows);
+  };
+
+  const handleBulkStockCalcSubmit = async () => {
+    const filledRows = productRows.filter(row =>
+      row.initialStock !== '' && row.finalStock !== ''
+    );
+
+    if (filledRows.length === 0) {
+      alert('Veuillez remplir au moins une ligne de produit');
+      return;
+    }
+
+    try {
+      const date = new Date().toISOString().split('T')[0];
+
+      for (const row of filledRows) {
+        const newCalculation: StockSalesCalculation = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          date: date,
+          productId: row.productId,
+          productName: row.productName,
+          initialStock: parseInt(row.initialStock),
+          finalStock: parseInt(row.finalStock),
+          damaged: parseInt(row.damaged || '0'),
+          broken: parseInt(row.broken || '0'),
+          leaking: parseInt(row.leaking || '0'),
+          quantitySold: row.quantitySold,
+          notes: '',
+          createdAt: new Date().toISOString(),
+          createdBy: user.username
+        };
+
+        await addStockSalesCalculation(newCalculation);
+      }
+
+      alert(`${filledRows.length} calcul(s) enregistré(s) avec succès !`);
+      initializeProductRows();
+      setShowStockCalcForm(false);
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement:', error);
+      alert('Erreur lors de l\'enregistrement des calculs');
+    }
   };
 
   const handleStockCalcSubmit = async () => {
@@ -691,150 +787,141 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
       )}
 
       {activeTab === 'stock-calc' && showStockCalcForm && (
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Calcul de Ventes par Stock</h3>
-          <p className="text-sm text-gray-600 mb-6">
-            Formule: Stock Final - Stock Initial - (Endommagés + Cassés + Fuyants) = Quantité Vendue
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Produit <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={stockCalcFormData.productId}
-                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, productId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
-                <option value="">Sélectionner un produit</option>
-                {products.map(product => (
-                  <option key={product.id} value={product.id}>
-                    {product.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Stock Initial <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={stockCalcFormData.initialStock}
-                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, initialStock: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                min="0"
-                placeholder="Stock au début"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Stock Final (après inventaire) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={stockCalcFormData.finalStock}
-                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, finalStock: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                min="0"
-                placeholder="Stock après comptage"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantité Endommagée
-              </label>
-              <input
-                type="number"
-                value={stockCalcFormData.damaged}
-                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, damaged: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                min="0"
-                placeholder="Articles endommagés"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantité Cassée
-              </label>
-              <input
-                type="number"
-                value={stockCalcFormData.broken}
-                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, broken: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                min="0"
-                placeholder="Articles cassés"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantité Fuyante
-              </label>
-              <input
-                type="number"
-                value={stockCalcFormData.leaking}
-                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, leaking: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                min="0"
-                placeholder="Articles fuyants"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notes
-              </label>
-              <textarea
-                value={stockCalcFormData.notes}
-                onChange={(e) => setStockCalcFormData({ ...stockCalcFormData, notes: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                rows={2}
-                placeholder="Observations (optionnel)"
-              />
-            </div>
+        <div className="bg-white rounded-xl shadow-lg mb-8">
+          <div className="p-6 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Calcul de Ventes par Stock</h3>
+            <p className="text-sm text-gray-600 mt-2">
+              Formule: Stock Final - Stock Initial - (Endommagés + Cassés + Fuyants) = Quantité Vendue
+            </p>
           </div>
 
-          {stockCalcFormData.initialStock && stockCalcFormData.finalStock && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between">
-                <span className="text-green-800 font-medium">Quantité Vendue Calculée:</span>
-                <span className="text-2xl font-bold text-green-600">
-                  {calculateQuantitySold()} unités
-                </span>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Liste des Produits
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Stock Initial
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Stock Final après Inventaire
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Quantité Endommagée
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Quantité Cassée
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Quantité Fuyante
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-50">
+                    Quantité Vendue
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {productRows.map((row, index) => (
+                  <tr key={row.productId} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {row.productName}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={row.initialStock}
+                        onChange={(e) => updateProductRow(index, 'initialStock', e.target.value)}
+                        className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        min="0"
+                        placeholder="0"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={row.finalStock}
+                        onChange={(e) => updateProductRow(index, 'finalStock', e.target.value)}
+                        className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        min="0"
+                        placeholder="0"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={row.damaged}
+                        onChange={(e) => updateProductRow(index, 'damaged', e.target.value)}
+                        className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        min="0"
+                        placeholder="0"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={row.broken}
+                        onChange={(e) => updateProductRow(index, 'broken', e.target.value)}
+                        className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        min="0"
+                        placeholder="0"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={row.leaking}
+                        onChange={(e) => updateProductRow(index, 'leaking', e.target.value)}
+                        className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        min="0"
+                        placeholder="0"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center justify-center">
+                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                          row.quantitySold > 0
+                            ? 'bg-green-100 text-green-800'
+                            : row.quantitySold < 0
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {row.quantitySold}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                <p>Remplissez les lignes des produits pour lesquels vous souhaitez calculer les ventes.</p>
+                <p className="mt-1">Les champs vides seront ignorés lors de l'enregistrement.</p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowStockCalcForm(false);
+                    initializeProductRows();
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleBulkStockCalcSubmit}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                >
+                  <Calculator className="h-4 w-4" />
+                  <span>Enregistrer les Calculs</span>
+                </button>
               </div>
             </div>
-          )}
-
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={() => {
-                setShowStockCalcForm(false);
-                setStockCalcFormData({
-                  productId: '',
-                  initialStock: '',
-                  finalStock: '',
-                  damaged: '0',
-                  broken: '0',
-                  leaking: '0',
-                  notes: ''
-                });
-              }}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleStockCalcSubmit}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Enregistrer le Calcul
-            </button>
           </div>
         </div>
       )}
