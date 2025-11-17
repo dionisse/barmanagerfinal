@@ -40,7 +40,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-12 text-center">
             <Building className="mx-auto h-16 w-16 text-white mb-4" />
-            <h1 className="text-3xl font-bold text-white">GOBEX</h1>
+            <h1 className="text-3xl font-bold text-white">AHANDJO</h1>
             <p className="text-blue-100 mt-2">Gestion de Bar</p>
             <div className="flex items-center justify-center space-x-2 mt-4">
               <Shield className="h-4 w-4 text-blue-200" />
@@ -131,7 +131,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
             <div className="mt-8 text-center">
               <p className="text-xs text-gray-500">
-                GOBEX v2.0.1 - Système de Gestion de Bar Professionnel
+                AHANDJO v2.0.1 - Système de Gestion de Bar Professionnel
               </p>
               <p className="text-xs text-gray-400 mt-1">
                 Système de licences intégré et sécurisé
