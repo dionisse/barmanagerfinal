@@ -1,0 +1,17 @@
+{
+  "name": "gobex-package-builder",
+  "version": "1.0.0",
+  "description": "Builder pour créer le package téléchargeable GOBEX",
+  "main": "build-package.js",
+  "scripts": {
+    "build": "node build-package.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "archiver": "^5.3.1"
+  },
+  "devDependencies": {},
+  "keywords": ["gobex", "package", "builder"],
+  "author": "GOBEX Team",
+  "license": "MIT"
+}

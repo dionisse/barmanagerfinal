@@ -1,0 +1,37 @@
+{
+  "name": "GOBEX-Bar-Management",
+  "version": "2.0.1",
+  "description": "Système de Gestion de Bar Professionnel",
+  "author": "GOBEX Team",
+  "buildDate": "2024-01-15T00:00:00.000Z",
+  "storage": {
+    "type": "localStorage",
+    "prefix": "gobex_",
+    "encryption": false
+  },
+  "features": {
+    "offline": true,
+    "autoSave": true,
+    "backup": true,
+    "multiUser": true,
+    "licensing": true
+  },
+  "license": {
+    "types": {
+      "Kpêvi": { "duration": 1, "price": 15000 },
+      "Kléoun": { "duration": 3, "price": 40000 },
+      "Agbon": { "duration": 6, "price": 70000 },
+      "Baba": { "duration": 12, "price": 120000 }
+    }
+  },
+  "database": {
+    "type": "localStorage",
+    "autoBackup": true,
+    "backupInterval": 24
+  },
+  "ui": {
+    "theme": "modern",
+    "language": "fr",
+    "currency": "FCFA"
+  }
+}
