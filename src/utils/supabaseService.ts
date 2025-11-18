@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 
 // Initialize Supabase client
 // Use environment variables if available (for production), otherwise use hardcoded values (for development)
@@ -135,13 +136,13 @@ export class SupabaseService {
 
       this.logDebug('Tentative d\'authentification pour:', username, userType);
 
-      // Chercher l'utilisateur dans la nouvelle table users
+      // Use the secure authentication function instead of direct query
       const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .eq('password', password)
-        .eq('role', userType);
+        .rpc('authenticate_user', {
+          p_username: username,
+          p_password: password,
+          p_role: userType
+        });
       
       if (error) {
         throw error;
@@ -162,7 +163,7 @@ export class SupabaseService {
         return {
           success: true,
           user: {
-            id: userData.id,
+            id: userData.user_id,
             username: userData.username,
             type: 'Propriétaire',
             dateCreation: userData.created_at
@@ -221,7 +222,7 @@ export class SupabaseService {
         return {
           success: true,
           user: {
-            id: userData.id,
+            id: userData.user_id,
             username: userData.username,
             type: userData.role,
             dateCreation: userData.created_at,

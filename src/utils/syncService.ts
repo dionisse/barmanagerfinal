@@ -1,4 +1,4 @@
-import { databaseService } from './databaseService';
+import { supabaseService } from './supabaseService';
 
 export class SyncService {
   private syncInterval: number = 5 * 60 * 1000; // 5 minutes
@@ -37,7 +37,7 @@ export class SyncService {
       const localData = this.collectLocalData();
       
       // Envoyer vers le cloud
-      const result = await databaseService.syncUserData(this.currentUserId, localData);
+      const result = await supabaseService.saveUserData(this.currentUserId, localData);
       
       if (result.success) {
         console.log('☁️ Données synchronisées vers le cloud');
@@ -53,7 +53,7 @@ export class SyncService {
 
   async syncFromCloud(userId: string) {
     try {
-      const result = await databaseService.getUserData(userId);
+      const result = await supabaseService.getUserData(userId);
       
       if (result.success && result.data) {
         // Restaurer les données depuis le cloud

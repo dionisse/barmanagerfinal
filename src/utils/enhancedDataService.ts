@@ -1,5 +1,4 @@
 import { cloudSyncService } from './cloudSyncService';
-import { databaseService } from './databaseService';
 
 // Service de données amélioré avec synchronisation automatique
 export class EnhancedDataService {

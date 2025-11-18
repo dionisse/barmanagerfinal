@@ -1,4 +1,4 @@
-import { databaseService } from './databaseService';
+import { supabaseService } from './supabaseService';
 
 export interface SyncResult {
   success: boolean;
@@ -144,7 +144,7 @@ export class CloudSyncService {
         const localData = this.collectLocalData();
         this.logDebug(`Tentative d'upload #${attempt + 1} - Données collectées:`, Object.keys(localData).length, 'éléments');
         
-        const result = await databaseService.syncUserData(this.currentUserId!, localData);
+        const result = await supabaseService.saveUserData(this.currentUserId!, localData);
         
         this.logDebug(`Upload réussi à la tentative #${attempt + 1}`);
         return {
@@ -178,7 +178,7 @@ export class CloudSyncService {
     for (let attempt = 0; attempt < this.retryCount; attempt++) {
       try {
         this.logDebug(`Tentative de download #${attempt + 1}`);
-        const result = await databaseService.getUserData(this.currentUserId!);
+        const result = await supabaseService.getUserData(this.currentUserId!);
         
         if (result.success && result.data) {
           const cloudLastSync = new Date(result.lastSync || 0);
@@ -317,7 +317,7 @@ export class CloudSyncService {
   async forceDownloadFromCloud(userId: string): Promise<SyncResult> {
     try {
       this.logDebug(`Forçage du téléchargement des données pour l'utilisateur ${userId}`);
-      const result = await databaseService.getUserData(userId);
+      const result = await supabaseService.getUserData(userId);
       
       if (result.success && result.data) {
         this.restoreLocalData(result.data);
