@@ -351,13 +351,24 @@ export const addLicense = async (license: License): Promise<void> => {
     try {
       // Trouver le userLot associé
       const userLots = await getUserLots();
+      console.log('☁️ addLicense - Synchronisation cloud:', {
+        licenseId: license.id,
+        userLotId: license.userLotId,
+        userLotsFound: userLots.length,
+        hasUserLot: userLots.some(ul => ul.id === license.userLotId)
+      });
+
       const userLot = userLots.find(ul => ul.id === license.userLotId);
-      
+
       if (userLot) {
-        await supabaseService.registerUserLotAndLicense(userLot, license);
+        console.log('☁️ Envoi userLot et licence vers Supabase...');
+        const result = await supabaseService.registerUserLotAndLicense(userLot, license);
+        console.log('☁️ Résultat Supabase:', result);
+      } else {
+        console.warn('⚠️ UserLot non trouvé pour synchronisation cloud:', license.userLotId);
       }
     } catch (error) {
-      console.warn('Synchronisation cloud échouée, données sauvées localement');
+      console.warn('❌ Synchronisation cloud échouée:', error);
     }
   }
   
