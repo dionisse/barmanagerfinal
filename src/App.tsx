@@ -98,10 +98,17 @@ function App() {
     if (currentUser?.type === 'Propriétaire') {
       // Pour le propriétaire, vérifier l'état général des licences
       const { expired } = await checkLicenseExpiration();
+      console.log('🔒 App.tsx - Vérification licence propriétaire:', { expired });
       setLicenseExpired(expired);
     } else if (currentUser) {
       // Pour les autres utilisateurs, vérifier leur licence spécifique
       const licenseCheck = await checkUserLicenseAccess(currentUser.username);
+      console.log('🔒 App.tsx - Vérification licence utilisateur:', {
+        username: currentUser.username,
+        hasAccess: licenseCheck.hasAccess,
+        message: licenseCheck.message,
+        willSetExpiredTo: !licenseCheck.hasAccess
+      });
       setLicenseExpired(!licenseCheck.hasAccess);
     }
   };
