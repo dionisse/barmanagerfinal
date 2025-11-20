@@ -409,11 +409,19 @@ export const checkUserLicenseAccess = async (username: string): Promise<{ hasAcc
     }
     
     // Vérifier si le lot a une licence active
-    const activeLicense = licenses.find(license => 
-      license.userLotId === userLot.id && 
-      license.active &&
-      new Date(license.dateFin) > new Date()
-    );
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const activeLicense = licenses.find(license => {
+      if (license.userLotId !== userLot.id || !license.active) {
+        return false;
+      }
+
+      const endDate = new Date(license.dateFin);
+      endDate.setHours(23, 59, 59, 999);
+
+      return endDate >= today;
+    });
     
     if (!activeLicense) {
       return { hasAccess: false, userLot, message: 'Aucune licence active trouvée' };
@@ -564,9 +572,14 @@ export const checkLicenseExpiration = async (): Promise<{ expired: boolean; warn
     let warningMessage = null;
 
     for (const license of activeLicenses) {
+      const todayNormalized = new Date(today);
+      todayNormalized.setHours(0, 0, 0, 0);
+
       const endDate = new Date(license.dateFin);
-      const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      
+      endDate.setHours(23, 59, 59, 999);
+
+      const daysUntilExpiry = Math.ceil((endDate.getTime() - todayNormalized.getTime()) / (1000 * 60 * 60 * 24));
+
       if (daysUntilExpiry < 0) {
         hasExpired = true;
       } else if (daysUntilExpiry <= 7) {

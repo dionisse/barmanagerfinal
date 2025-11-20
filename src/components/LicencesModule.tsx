@@ -248,10 +248,15 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
   };
 
   const getLicenseStatus = (license: License) => {
+    // Normaliser les dates à minuit pour comparer uniquement les jours
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const endDate = new Date(license.dateFin);
+    endDate.setHours(23, 59, 59, 999); // Fin de journée pour la date de fin
+
     const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (daysUntilExpiry < 0) return 'expired';
     if (daysUntilExpiry <= 7) return 'warning';
     return 'active';

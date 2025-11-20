@@ -321,9 +321,15 @@ export class SupabaseService {
       }
       
       const licenseData = licenses[0];
+
+      // Normaliser les dates pour comparer uniquement les jours
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
       const dateFin = new Date(licenseData.date_fin);
-      
-      if (dateFin < new Date()) {
+      dateFin.setHours(23, 59, 59, 999);
+
+      if (dateFin < today) {
         return { hasAccess: false, userLot };
       }
       
