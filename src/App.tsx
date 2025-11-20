@@ -73,8 +73,8 @@ function App() {
         // Mettre à jour l'utilisateur dans le localStorage
         localStorage.setItem('gobex_current_user', JSON.stringify(updatedUser));
         
-        // Démarrer la synchronisation automatique avec l'ID correct
-        enhancedSyncService.startAutoSync(correctUserId);
+        // Démarrer la synchronisation automatique avec user_lot_id pour isolation
+        enhancedSyncService.startAutoSync(userLotId);
       } else {
         // Session invalide, déconnecter l'utilisateur
         handleLogout();
@@ -122,11 +122,11 @@ function App() {
             userLotId: licenseCheck.userLot?.id
           };
           
-          // Démarrer la synchronisation automatique avec l'ID correct
-          enhancedSyncService.startAutoSync(correctUserId);
-          
-          // Essayer de récupérer les données depuis le cloud
-          await enhancedSyncService.forceDownloadFromCloud(correctUserId);
+          // Démarrer la synchronisation automatique avec user_lot_id pour isolation
+          enhancedSyncService.startAutoSync(userLotId);
+
+          // Essayer de récupérer les données depuis le cloud avec user_lot_id
+          await enhancedSyncService.forceDownloadFromCloud(userLotId);
         }
       }
       

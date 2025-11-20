@@ -136,7 +136,7 @@ export class SupabaseService {
 
       this.logDebug('Tentative d\'authentification pour:', username, userType);
 
-      // Use the secure authentication function instead of direct query
+      // Query users table to get user with user_lot_id
       const { data: users, error } = await supabase
         .rpc('authenticate_user', {
           p_username: username,
@@ -166,7 +166,8 @@ export class SupabaseService {
             id: userData.user_id,
             username: userData.username,
             type: 'Propriétaire',
-            dateCreation: userData.created_at
+            dateCreation: userData.created_at,
+            userLotId: null
           }
         };
       }
@@ -403,24 +404,22 @@ export class SupabaseService {
         throw licenseError;
       }
       
-      // Créer les utilisateurs
+      // Créer les utilisateurs dans la table users
       const { error: usersError } = await supabase
         .from('users')
         .insert([
           {
-            id: `${userLot.id}_gestionnaire`,
+            email: `${userLot.gestionnaire.username}@gobex.local`,
             username: userLot.gestionnaire.username,
             password: userLot.gestionnaire.password,
-            type: 'Gestionnaire',
-            date_creation: userLot.dateCreation,
+            role: 'Gestionnaire',
             user_lot_id: userLot.id
           },
           {
-            id: `${userLot.id}_employe`,
+            email: `${userLot.employe.username}@gobex.local`,
             username: userLot.employe.username,
             password: userLot.employe.password,
-            type: 'Employé',
-            date_creation: userLot.dateCreation,
+            role: 'Employé',
             user_lot_id: userLot.id
           }
         ]);
