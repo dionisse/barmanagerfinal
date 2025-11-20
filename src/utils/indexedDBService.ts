@@ -77,18 +77,35 @@ interface GobexDB extends DBSchema {
 }
 
 export class IndexedDBService {
-  private dbName = 'gobex-db';
+  private baseDbName = 'gobex-db';
   private dbVersion = 4;
   private db: IDBPDatabase<GobexDB> | null = null;
   private debugMode = true;
+  private currentUserLotId: string | null = null;
 
   constructor() {
-    this.initDB();
+    // Don't initialize DB in constructor - wait for user_lot_id
+  }
+
+  // Set user lot ID and initialize appropriate database
+  async setUserLotId(userLotId: string | null): Promise<void> {
+    this.currentUserLotId = userLotId;
+    await this.initDB();
+    this.logDebug(`💾 IndexedDB: Switched to database for user lot ${userLotId || 'owner'}`);
+  }
+
+  // Get database name with user_lot_id prefix for isolation
+  private getDbName(): string {
+    if (!this.currentUserLotId) {
+      return `${this.baseDbName}-owner`;
+    }
+    return `${this.baseDbName}-${this.currentUserLotId}`;
   }
 
   private async initDB(): Promise<void> {
     try {
-      this.db = await openDB<GobexDB>(this.dbName, this.dbVersion, {
+      const dbName = this.getDbName();
+      this.db = await openDB<GobexDB>(dbName, this.dbVersion, {
         upgrade: (db, oldVersion, newVersion, transaction) => {
           this.logDebug(`Mise à niveau de la base de données de la version ${oldVersion} vers ${newVersion}`);
           
