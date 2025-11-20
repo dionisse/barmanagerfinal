@@ -393,17 +393,28 @@ export const checkUserLicenseAccess = async (username: string): Promise<{ hasAcc
       lot.employe.username === username
     );
 
+    console.log('🔍 checkUserLicenseAccess - Recherche userLot:', {
+      username,
+      userLotsCount: userLots.length,
+      userLotFound: !!userLot,
+      userLotId: userLot?.id
+    });
+
     if (!userLot) {
-      // Si pas trouvé localement, essayer dans le cloud
+      // Si pas trouvé localement, essayer dans le cloud UNIQUEMENT si en ligne
+      // Mais continuer même si le cloud échoue
       try {
         if (navigator.onLine) {
+          console.log('⚠️ UserLot non trouvé localement, tentative cloud pour:', username);
           const cloudResult = await supabaseService.checkUserLicense(username);
+          console.log('☁️ Résultat cloud:', cloudResult);
           return cloudResult;
         } else {
+          console.log('⚠️ Hors ligne et userLot non trouvé pour:', username);
           return { hasAccess: false, message: 'Hors ligne - impossible de vérifier la licence' };
         }
       } catch (error) {
-        console.warn('Vérification cloud échouée, utilisation des données locales');
+        console.warn('❌ Vérification cloud échouée pour:', username, error);
         return { hasAccess: false, message: error.message };
       }
     }
