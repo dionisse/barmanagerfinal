@@ -16,8 +16,10 @@ export class EnhancedDataService {
       const currentUser = this.getCurrentUser();
       if (currentUser && currentUser.type !== 'Propriétaire') {
         // Synchroniser après un court délai pour éviter les conflits
+        // Utiliser userLotId pour isolation des données entre groupes
+        const syncId = currentUser.userLotId || currentUser.id;
         setTimeout(() => {
-          cloudSyncService.manualSync(currentUser.id);
+          cloudSyncService.manualSync(syncId);
         }, 1000);
       }
     }

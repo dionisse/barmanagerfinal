@@ -44,16 +44,16 @@ export class CloudSyncService {
     });
   }
 
-  // Démarrer la synchronisation automatique
-  startAutoSync(userId: string): void {
-    this.currentUserId = userId;
+  // Démarrer la synchronisation automatique (userId est maintenant user_lot_id)
+  startAutoSync(userLotId: string): void {
+    this.currentUserId = userLotId;
     this.stopAutoSync();
-    
-    this.logDebug('🔄 Démarrage de la synchronisation automatique pour:', userId);
-    
+
+    this.logDebug('🔄 Démarrage de la synchronisation automatique pour le groupe:', userLotId);
+
     // Synchroniser immédiatement
     this.performSync();
-    
+
     // Puis synchroniser périodiquement
     this.intervalId = setInterval(() => {
       this.performSync();
@@ -70,9 +70,9 @@ export class CloudSyncService {
     this.logDebug('⏹️ Synchronisation automatique arrêtée');
   }
 
-  // Synchronisation manuelle
-  async manualSync(userId: string): Promise<SyncResult> {
-    this.currentUserId = userId;
+  // Synchronisation manuelle (userId est maintenant user_lot_id)
+  async manualSync(userLotId: string): Promise<SyncResult> {
+    this.currentUserId = userLotId;
     return await this.performSync(true);
   }
 
@@ -314,10 +314,11 @@ export class CloudSyncService {
   }
 
   // Forcer la synchronisation depuis le cloud (pour la première connexion)
-  async forceDownloadFromCloud(userId: string): Promise<SyncResult> {
+  // userId est maintenant user_lot_id pour isolation des données
+  async forceDownloadFromCloud(userLotId: string): Promise<SyncResult> {
     try {
-      this.logDebug(`Forçage du téléchargement des données pour l'utilisateur ${userId}`);
-      const result = await supabaseService.getUserData(userId);
+      this.logDebug(`Forçage du téléchargement des données pour le groupe ${userLotId}`);
+      const result = await supabaseService.getUserData(userLotId);
       
       if (result.success && result.data) {
         this.restoreLocalData(result.data);

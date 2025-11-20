@@ -10,8 +10,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export class SupabaseService {
   private debugMode: boolean = true;
 
-  // Méthode pour sauvegarder les données utilisateur
-  async saveUserData(userId: string, data: any): Promise<{ success: boolean; message: string }> {
+  // Méthode pour sauvegarder les données utilisateur (par user_lot_id)
+  async saveUserData(userLotId: string, data: any): Promise<{ success: boolean; message: string }> {
     try {
       if (!navigator.onLine) {
         return {
@@ -19,38 +19,38 @@ export class SupabaseService {
           message: 'Hors ligne - impossible de sauvegarder les données'
         };
       }
-      
-      this.logDebug('Sauvegarde des données pour l\'utilisateur:', userId);
-      
-      // Vérifier que l'ID utilisateur est valide
-      if (!userId || (userId !== 'owner-001' && !userId.includes('_'))) {
-        throw new Error(`Format d'ID utilisateur invalide: ${userId}`);
+
+      this.logDebug('Sauvegarde des données pour le groupe:', userLotId);
+
+      // Vérifier que l'ID du lot utilisateur est valide
+      if (!userLotId) {
+        throw new Error('ID du groupe utilisateur manquant');
       }
-      
-      // Vérifier si l'utilisateur existe déjà
-      const { data: existingUser, error: checkError } = await supabase
+
+      // Vérifier si les données du groupe existent déjà
+      const { data: existingData, error: checkError } = await supabase
         .from('user_data')
-        .select('user_id')
-        .eq('user_id', userId)
-        .single();
-      
+        .select('id')
+        .eq('user_lot_id', userLotId)
+        .maybeSingle();
+
       let result;
-      
-      if (existingUser) {
-        // Mettre à jour les données existantes
+
+      if (existingData) {
+        // Mettre à jour les données existantes du groupe
         result = await supabase
           .from('user_data')
-          .update({ 
+          .update({
             data: data,
             last_sync: new Date().toISOString()
           })
-          .eq('user_id', userId);
+          .eq('user_lot_id', userLotId);
       } else {
-        // Insérer de nouvelles données
+        // Insérer de nouvelles données pour le groupe
         result = await supabase
           .from('user_data')
-          .insert([{ 
-            user_id: userId,
+          .insert([{
+            user_lot_id: userLotId,
             data: data,
             last_sync: new Date().toISOString()
           }]);
@@ -60,7 +60,7 @@ export class SupabaseService {
         throw result.error;
       }
       
-      this.logDebug('Données sauvegardées avec succès pour l\'utilisateur:', userId);
+      this.logDebug('Données sauvegardées avec succès pour le groupe:', userLotId);
       return {
         success: true,
         message: 'Données synchronisées avec succès'
@@ -74,8 +74,8 @@ export class SupabaseService {
     }
   }
 
-  // Méthode pour récupérer les données utilisateur
-  async getUserData(userId: string): Promise<{ success: boolean; data?: any; lastSync?: string; message?: string }> {
+  // Méthode pour récupérer les données utilisateur (par user_lot_id)
+  async getUserData(userLotId: string): Promise<{ success: boolean; data?: any; lastSync?: string; message?: string }> {
     try {
       if (!navigator.onLine) {
         return {
@@ -83,19 +83,19 @@ export class SupabaseService {
           message: 'Hors ligne - impossible de récupérer les données'
         };
       }
-      
-      this.logDebug('Récupération des données pour l\'utilisateur:', userId);
-      
-      // Vérifier que l'ID utilisateur est valide
-      if (!userId || (userId !== 'owner-001' && !userId.includes('_'))) {
-        throw new Error(`Format d'ID utilisateur invalide: ${userId}`);
+
+      this.logDebug('Récupération des données pour le groupe:', userLotId);
+
+      // Vérifier que l'ID du lot utilisateur est valide
+      if (!userLotId) {
+        throw new Error('ID du groupe utilisateur manquant');
       }
-      
+
       const { data, error } = await supabase
         .from('user_data')
         .select('*')
-        .eq('user_id', userId)
-        .single();
+        .eq('user_lot_id', userLotId)
+        .maybeSingle();
       
       if (error) {
         if (error.code === 'PGRST116') {
@@ -109,7 +109,7 @@ export class SupabaseService {
         throw error;
       }
       
-      this.logDebug('Données récupérées avec succès pour l\'utilisateur:', userId);
+      this.logDebug('Données récupérées avec succès pour le groupe:', userLotId);
       return {
         success: true,
         data: data.data,

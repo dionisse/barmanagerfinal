@@ -452,11 +452,13 @@ export const authenticateUser = async (username: string, password: string, userT
           }
         }
         
-        // Démarrer la synchronisation automatique
-        enhancedSyncService.startAutoSync(cloudResult.user.id);
-        
-        // Essayer de récupérer les données depuis le cloud
-        await enhancedSyncService.forceDownloadFromCloud(cloudResult.user.id);
+        // Démarrer la synchronisation automatique avec user_lot_id pour isolation
+        // Si c'est un Manager/Employé, utiliser userLotId; si Propriétaire, utiliser id
+        const syncId = cloudResult.user.userLotId || cloudResult.user.id;
+        enhancedSyncService.startAutoSync(syncId);
+
+        // Essayer de récupérer les données depuis le cloud avec user_lot_id
+        await enhancedSyncService.forceDownloadFromCloud(syncId);
         
         return cloudResult;
       }
