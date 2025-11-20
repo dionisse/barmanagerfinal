@@ -23,11 +23,19 @@ export interface UserData {
 export class CloudSyncService {
   private syncInterval: number = 2 * 60 * 1000; // 2 minutes
   private intervalId: NodeJS.Timeout | null = null;
-  private currentUserId: string | null = null;
+  private currentUserId: string | null = null; // This is user_lot_id for isolation
   private isOnline: boolean = navigator.onLine;
   private pendingSync: boolean = false;
   private lastSyncAttempt: Date | null = null;
   private retryCount: number = 3;
+
+  // Get storage key with user_lot_id prefix for data isolation
+  private getStorageKey(key: string): string {
+    if (!this.currentUserId) {
+      return `gobex_${key}`; // Fallback (should not happen)
+    }
+    return `gobex_${this.currentUserId}_${key}`;
+  }
   private retryDelay: number = 5000; // 5 secondes
   private debugMode: boolean = true;
 
@@ -227,15 +235,17 @@ export class CloudSyncService {
     };
   }
 
-  // Collecter toutes les données locales
+  // Collecter toutes les données locales (isolées par user_lot_id)
   private collectLocalData(): UserData {
     const getData = (key: string) => {
-      const data = localStorage.getItem(`gobex_${key}`);
+      const storageKey = this.getStorageKey(key);
+      const data = localStorage.getItem(storageKey);
       return data ? JSON.parse(data) : [];
     };
 
     const getSettings = () => {
-      const data = localStorage.getItem('gobex_settings');
+      const storageKey = this.getStorageKey('settings');
+      const data = localStorage.getItem(storageKey);
       return data ? JSON.parse(data) : {};
     };
 
@@ -252,10 +262,11 @@ export class CloudSyncService {
     };
   }
 
-  // Restaurer les données dans le localStorage
+  // Restaurer les données dans le localStorage (isolées par user_lot_id)
   private restoreLocalData(data: UserData): void {
     const setData = (key: string, value: any) => {
-      localStorage.setItem(`gobex_${key}`, JSON.stringify(value));
+      const storageKey = this.getStorageKey(key);
+      localStorage.setItem(storageKey, JSON.stringify(value));
     };
 
     if (data.products) setData('products', data.products);
@@ -283,12 +294,14 @@ export class CloudSyncService {
 
   // Mettre à jour l'heure de dernière synchronisation
   private updateLastSyncTime(): void {
-    localStorage.setItem('gobex_last_sync', new Date().toISOString());
+    const key = this.getStorageKey('last_sync');
+    localStorage.setItem(key, new Date().toISOString());
   }
 
   // Obtenir l'heure de dernière synchronisation
   getLastSyncTime(): string | null {
-    return localStorage.getItem('gobex_last_sync');
+    const key = this.getStorageKey('last_sync');
+    return localStorage.getItem(key);
   }
 
   // Vérifier si en ligne

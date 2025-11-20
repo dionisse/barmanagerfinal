@@ -14,6 +14,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { User, UserType } from './types';
 import { checkLicenseExpiration, checkUserLicenseAccess } from './utils/dataService';
 import { enhancedSyncService } from './utils/enhancedSyncService';
+import { storageService } from './utils/storageService';
 
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -70,9 +71,12 @@ function App() {
         };
         setCurrentUser(updatedUser);
         
+        // Set storage service user_lot_id for data isolation
+        storageService.setUserLotId(userLotId);
+
         // Mettre à jour l'utilisateur dans le localStorage
         localStorage.setItem('gobex_current_user', JSON.stringify(updatedUser));
-        
+
         // Démarrer la synchronisation automatique avec user_lot_id pour isolation
         enhancedSyncService.startAutoSync(userLotId);
       } else {
@@ -122,6 +126,9 @@ function App() {
             userLotId: licenseCheck.userLot?.id
           };
           
+          // Set storage service user_lot_id for data isolation
+          storageService.setUserLotId(userLotId);
+
           // Démarrer la synchronisation automatique avec user_lot_id pour isolation
           enhancedSyncService.startAutoSync(userLotId);
 
@@ -130,6 +137,11 @@ function App() {
         }
       }
       
+      // Set storage service user_lot_id (for owner, use null)
+      if (user.type === 'Propriétaire') {
+        storageService.setUserLotId(null);
+      }
+
       setCurrentUser(user);
       localStorage.setItem('gobex_current_user', JSON.stringify(user));
     } catch (error) {
@@ -144,6 +156,10 @@ function App() {
   const handleLogout = () => {
     // Arrêter la synchronisation automatique
     enhancedSyncService.stopAutoSync();
+
+    // Reset storage service
+    storageService.setUserLotId(null);
+
     setCurrentUser(null);
     localStorage.removeItem('gobex_current_user');
     setCurrentModule('dashboard');

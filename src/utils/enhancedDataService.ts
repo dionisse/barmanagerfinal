@@ -1,4 +1,5 @@
 import { cloudSyncService } from './cloudSyncService';
+import { storageService } from './storageService';
 
 // Service de données amélioré avec synchronisation automatique
 export class EnhancedDataService {
@@ -35,58 +36,58 @@ export class EnhancedDataService {
   // Méthodes de données avec synchronisation automatique
   async addProduct(product: any): Promise<void> {
     return this.performDataOperation(async () => {
-      const products = JSON.parse(localStorage.getItem('gobex_products') || '[]');
+      const products = storageService.getJSON<any[]>('products', []);
       products.push(product);
-      localStorage.setItem('gobex_products', JSON.stringify(products));
+      storageService.setJSON('products', products);
     });
   }
 
   async updateProduct(product: any): Promise<void> {
     return this.performDataOperation(async () => {
-      const products = JSON.parse(localStorage.getItem('gobex_products') || '[]');
+      const products = storageService.getJSON<any[]>('products', []);
       const index = products.findIndex((p: any) => p.id === product.id);
       if (index !== -1) {
         products[index] = product;
-        localStorage.setItem('gobex_products', JSON.stringify(products));
+        storageService.setJSON('products', products);
       }
     });
   }
 
   async addSale(sale: any): Promise<void> {
     return this.performDataOperation(async () => {
-      const sales = JSON.parse(localStorage.getItem('gobex_sales') || '[]');
+      const sales = storageService.getJSON<any[]>('sales', []);
       sales.push(sale);
-      localStorage.setItem('gobex_sales', JSON.stringify(sales));
+      storageService.setJSON('sales', sales);
     });
   }
 
   async addPurchase(purchase: any): Promise<void> {
     return this.performDataOperation(async () => {
-      const purchases = JSON.parse(localStorage.getItem('gobex_purchases') || '[]');
+      const purchases = storageService.getJSON<any[]>('purchases', []);
       purchases.push(purchase);
-      localStorage.setItem('gobex_purchases', JSON.stringify(purchases));
+      storageService.setJSON('purchases', purchases);
     });
   }
 
   async addMultiPurchase(purchase: any): Promise<void> {
     return this.performDataOperation(async () => {
-      const purchases = JSON.parse(localStorage.getItem('gobex_multi_purchases') || '[]');
+      const purchases = storageService.getJSON<any[]>('multi_purchases', []);
       purchases.push(purchase);
-      localStorage.setItem('gobex_multi_purchases', JSON.stringify(purchases));
+      storageService.setJSON('multi_purchases', purchases);
     });
   }
 
   async addExpense(expense: any): Promise<void> {
     return this.performDataOperation(async () => {
-      const expenses = JSON.parse(localStorage.getItem('gobex_expenses') || '[]');
+      const expenses = storageService.getJSON<any[]>('expenses', []);
       expenses.push(expense);
-      localStorage.setItem('gobex_expenses', JSON.stringify(expenses));
+      storageService.setJSON('expenses', expenses);
     });
   }
 
   async updateSettings(settings: any): Promise<void> {
     return this.performDataOperation(async () => {
-      localStorage.setItem('gobex_settings', JSON.stringify(settings));
+      storageService.setJSON('settings', settings);
     });
   }
 
@@ -99,7 +100,8 @@ export class EnhancedDataService {
   async forcSync(): Promise<void> {
     const currentUser = this.getCurrentUser();
     if (currentUser && currentUser.type !== 'Propriétaire') {
-      await cloudSyncService.manualSync(currentUser.id);
+      const syncId = currentUser.userLotId || currentUser.id;
+      await cloudSyncService.manualSync(syncId);
     }
   }
 }
