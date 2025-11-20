@@ -141,6 +141,15 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
       userLotId: newLicense.userLotId
     };
 
+    console.log('🔑 Création licence:', {
+      type: license.type,
+      dateDebut: license.dateDebut,
+      dateFin: license.dateFin,
+      duree: settings.duree + ' mois',
+      dateDebutObj: dateDebut,
+      dateFinObj: dateFin
+    });
+
     await addLicense(license);
     
     // Activer les utilisateurs du lot dans le système
@@ -256,6 +265,14 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
     endDate.setHours(23, 59, 59, 999); // Fin de journée pour la date de fin
 
     const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    console.log(`🔍 Vérification licence ${license.type}:`, {
+      dateFin: license.dateFin,
+      today: today.toISOString(),
+      endDate: endDate.toISOString(),
+      daysUntilExpiry,
+      status: daysUntilExpiry < 0 ? 'expired' : daysUntilExpiry <= 7 ? 'warning' : 'active'
+    });
 
     if (daysUntilExpiry < 0) return 'expired';
     if (daysUntilExpiry <= 7) return 'warning';

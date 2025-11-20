@@ -420,7 +420,18 @@ export const checkUserLicenseAccess = async (username: string): Promise<{ hasAcc
       const endDate = new Date(license.dateFin);
       endDate.setHours(23, 59, 59, 999);
 
-      return endDate >= today;
+      const isValid = endDate >= today;
+
+      console.log('🔍 checkUserLicenseAccess - Vérification licence:', {
+        type: license.type,
+        dateFin: license.dateFin,
+        today: today.toISOString(),
+        endDate: endDate.toISOString(),
+        isValid,
+        comparison: `${endDate.getTime()} >= ${today.getTime()}`
+      });
+
+      return isValid;
     });
     
     if (!activeLicense) {
