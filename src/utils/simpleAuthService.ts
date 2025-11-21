@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { UserType } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jtzshtopthamkqpgixcq.supabase.co';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0enNodG9wdGhhbWtxcGdpeGNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3ODE2NTcsImV4cCI6MjA2NzM1NzY1N30.jlJ3NW_91M_zMLqZ5BTS-ud6meL3gEqN-tYjlFUsrm8';
@@ -77,9 +78,10 @@ export class SimpleAuthService {
         return {
           success: true,
           user: {
+            id: user.id,
             username: user.username,
-            role: user.role,
-            email: user.email
+            type: user.role as UserType,
+            dateCreation: user.created_at || new Date().toISOString()
           },
           hasLicenseAccess: true,
           message: 'Accès illimité - Propriétaire'
@@ -91,9 +93,10 @@ export class SimpleAuthService {
         return {
           success: true,
           user: {
+            id: user.id,
             username: user.username,
-            role: user.role,
-            email: user.email
+            type: user.role as UserType,
+            dateCreation: user.created_at || new Date().toISOString()
           },
           hasLicenseAccess: false,
           message: 'Utilisateur sans licence associée'
@@ -111,9 +114,10 @@ export class SimpleAuthService {
         return {
           success: true,
           user: {
+            id: user.id,
             username: user.username,
-            role: user.role,
-            email: user.email
+            type: user.role as UserType,
+            dateCreation: user.created_at || new Date().toISOString()
           },
           hasLicenseAccess: false,
           message: 'Lot d\'utilisateurs non trouvé'
@@ -125,9 +129,10 @@ export class SimpleAuthService {
         return {
           success: true,
           user: {
+            id: user.id,
             username: user.username,
-            role: user.role,
-            email: user.email
+            type: user.role as UserType,
+            dateCreation: user.created_at || new Date().toISOString()
           },
           hasLicenseAccess: false,
           message: 'Lot d\'utilisateurs inactif'
@@ -145,9 +150,10 @@ export class SimpleAuthService {
         return {
           success: true,
           user: {
+            id: user.id,
             username: user.username,
-            role: user.role,
-            email: user.email
+            type: user.role as UserType,
+            dateCreation: user.created_at || new Date().toISOString()
           },
           hasLicenseAccess: false,
           message: 'Erreur lors de la vérification de la licence'
@@ -159,9 +165,10 @@ export class SimpleAuthService {
         return {
           success: true,
           user: {
+            id: user.id,
             username: user.username,
-            role: user.role,
-            email: user.email
+            type: user.role as UserType,
+            dateCreation: user.created_at || new Date().toISOString()
           },
           hasLicenseAccess: false,
           message: 'Aucune licence active trouvée'
@@ -180,9 +187,10 @@ export class SimpleAuthService {
         return {
           success: true,
           user: {
+            id: user.id,
             username: user.username,
-            role: user.role,
-            email: user.email
+            type: user.role as UserType,
+            dateCreation: user.created_at || new Date().toISOString()
           },
           hasLicenseAccess: false,
           licenseInfo: {
@@ -198,9 +206,10 @@ export class SimpleAuthService {
       return {
         success: true,
         user: {
+          id: user.id,
           username: user.username,
-          role: user.role,
-          email: user.email
+          type: user.role as UserType,
+          dateCreation: user.created_at || new Date().toISOString()
         },
         hasLicenseAccess: true,
         licenseInfo: {
