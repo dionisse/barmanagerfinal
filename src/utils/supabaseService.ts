@@ -441,7 +441,7 @@ export class SupabaseService {
       this.logDebug('Erreur lors de l\'enregistrement:', error);
       return {
         success: false,
-        message: `Erreur: ${error.message}`
+        message: `Erreur: ${error.message || 'Erreur inconnue lors de l\'enregistrement'}`
       };
     }
   }
