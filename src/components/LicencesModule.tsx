@@ -318,30 +318,68 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
   };
 
   const deleteUserLotAndUsers = async (userLotId: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce lot d\'utilisateurs ? Cela supprimera aussi leurs comptes utilisateur.')) {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce lot d\'utilisateurs ? Cela supprimera aussi leurs comptes utilisateur et toutes leurs données.')) {
       return;
     }
 
-    const userLot = userLots.find(lot => lot.id === userLotId);
-    if (!userLot) return;
+    try {
+      const userLot = userLots.find(lot => lot.id === userLotId);
+      if (!userLot) return;
 
-    // Supprimer les utilisateurs du système
-    const existingUsers = JSON.parse(localStorage.getItem('gobex_users') || '[]');
-    const updatedUsers = existingUsers.filter((u: any) => 
-      u.username !== userLot.gestionnaire.username && 
-      u.username !== userLot.employe.username
-    );
-    localStorage.setItem('gobex_users', JSON.stringify(updatedUsers));
+      console.log('🗑️ Suppression du lot:', userLotId);
 
-    // Désactiver les licences associées
-    const associatedLicenses = licenses.filter(l => l.userLotId === userLotId);
-    for (const license of associatedLicenses) {
-      await updateLicense({ ...license, active: false });
+      // 1. Supprimer les utilisateurs de la table users
+      const { error: usersError } = await supabase
+        .from('users')
+        .delete()
+        .in('username', [userLot.gestionnaire.username, userLot.employe.username]);
+
+      if (usersError) {
+        console.error('❌ Erreur suppression users:', usersError);
+        alert('Erreur lors de la suppression des utilisateurs: ' + usersError.message);
+        return;
+      }
+
+      // 2. Supprimer les licences associées
+      const { error: licensesError } = await supabase
+        .from('licenses')
+        .delete()
+        .eq('user_lot_id', userLotId);
+
+      if (licensesError) {
+        console.error('❌ Erreur suppression licenses:', licensesError);
+      }
+
+      // 3. Supprimer les données utilisateur
+      const { error: userDataError } = await supabase
+        .from('user_data')
+        .delete()
+        .eq('user_lot_id', userLotId);
+
+      if (userDataError) {
+        console.error('❌ Erreur suppression user_data:', userDataError);
+      }
+
+      // 4. Supprimer le lot d'utilisateurs (CASCADE supprimera automatiquement les relations)
+      const { error: userLotError } = await supabase
+        .from('user_lots')
+        .delete()
+        .eq('id', userLotId);
+
+      if (userLotError) {
+        console.error('❌ Erreur suppression user_lot:', userLotError);
+        alert('Erreur lors de la suppression du lot: ' + userLotError.message);
+        return;
+      }
+
+      console.log('✅ Lot supprimé avec succès');
+      alert('✅ Lot d\'utilisateurs supprimé avec succès');
+
+      loadData();
+    } catch (error) {
+      console.error('❌ Erreur lors de la suppression:', error);
+      alert('Erreur: ' + error.message);
     }
-
-    // Supprimer le lot d'utilisateurs
-    await deleteUserLot(userLotId);
-    loadData();
   };
 
   const getStatusColor = (status: string) => {
