@@ -1,10 +1,39 @@
 export type UserType = 'Gestionnaire' | 'Employé' | 'Propriétaire';
 
+export interface UserLot {
+  id: string;
+  gestionnaire: {
+    username: string;
+    password: string;
+  };
+  employe: {
+    username: string;
+    password: string;
+  };
+  dateCreation: string;
+  status: 'active' | 'suspended';
+}
+
+export interface License {
+  id: string;
+  type: 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba';
+  duree: number;
+  prix: number;
+  dateDebut: string;
+  dateFin: string;
+  cle: string;
+  active: boolean;
+  userLotId?: string;
+  userLot?: UserLot;
+}
+
 export interface User {
   id: string;
   username: string;
   type: UserType;
   dateCreation: string;
+  license?: License;
+  userLotId?: string;
 }
 
 export interface Product {
@@ -88,33 +117,6 @@ export interface Expense {
   categorie: string;
   destinataire: string;
   type: 'Dépense' | 'Charge';
-}
-
-export interface UserLot {
-  id: string;
-  gestionnaire: {
-    username: string;
-    password: string;
-  };
-  employe: {
-    username: string;
-    password: string;
-  };
-  dateCreation: string;
-  status: 'active' | 'suspended';
-}
-
-export interface License {
-  id: string;
-  type: 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba';
-  duree: number; // en mois
-  prix: number;
-  dateDebut: string;
-  dateFin: string;
-  cle: string;
-  active: boolean;
-  userLotId?: string; // Association avec un lot d'utilisateurs
-  userLot?: UserLot; // Données du lot d'utilisateurs
 }
 
 export interface LicenseSettings {

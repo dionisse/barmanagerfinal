@@ -59,19 +59,21 @@ const Navigation: React.FC<NavigationProps> = ({
   // Afficher les informations de licence pour les utilisateurs non-propriétaires
   const getLicenseInfo = () => {
     if (user.type === 'Propriétaire') return null;
-    
-    const userLicense = (user as any).license;
+
+    const userLicense = user.license;
     if (!userLicense) return null;
-    
-    const endDate = new Date(userLicense.dateFin);
+
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(userLicense.dateFin);
+    endDate.setHours(23, 59, 59, 999);
     const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     return {
       type: userLicense.type,
-      daysRemaining,
-      isExpiring: daysRemaining <= 7,
-      isExpired: daysRemaining < 0
+      daysRemaining: daysRemaining > 0 ? daysRemaining : 0,
+      isExpiring: daysRemaining <= 7 && daysRemaining > 0,
+      isExpired: daysRemaining <= 0
     };
   };
 
