@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { User, Settings } from '../types';
+import { User, Settings, License } from '../types';
 import { Settings as SettingsIcon, Building, FileText, Bell, Database, Save, Package, Activity, Download, Upload, CheckCircle, AlertTriangle, HeadphonesIcon, Mail, Phone, RefreshCw, Lock, Key, Eye, EyeOff } from 'lucide-react';
 import { getSettings, updateSettings, defaultSettings } from '../utils/dataService';
 import PackageInfo from './PackageInfo';
 import DiagnosticPanel from './DiagnosticPanel';
 import { packageManager } from '../utils/packageManager';
+import { supabase } from '../utils/supabaseService';
 
 interface ParametresModuleProps {
   user: User;
@@ -12,6 +13,8 @@ interface ParametresModuleProps {
 
 const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [userLicense, setUserLicense] = useState<License | null>(null);
+  const [daysRemaining, setDaysRemaining] = useState<number>(0);
 
   const [activeTab, setActiveTab] = useState('general');
   const [saving, setSaving] = useState(false);
@@ -25,7 +28,8 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
 
   useEffect(() => {
     loadSettings();
-  }, []);
+    loadUserLicense();
+  }, [user]);
 
   const loadSettings = async () => {
     try {
@@ -35,6 +39,65 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
       }
     } catch (error) {
       console.error('Erreur lors du chargement des paramètres:', error);
+    }
+  };
+
+  const loadUserLicense = async () => {
+    try {
+      if (user.type === 'Propriétaire') return;
+
+      console.log('📝 Chargement licence pour:', user.username);
+
+      // Trouver le user_lot_id de l'utilisateur
+      const { data: userLotData, error: lotError } = await supabase
+        .from('user_lots')
+        .select('id')
+        .or(`gestionnaire_username.eq.${user.username},employe_username.eq.${user.username}`)
+        .single();
+
+      if (lotError || !userLotData) {
+        console.log('❌ Pas de lot trouvé pour:', user.username);
+        return;
+      }
+
+      // Charger la licence active pour ce lot
+      const { data: licenseData, error: licenseError } = await supabase
+        .from('licenses')
+        .select('*')
+        .eq('user_lot_id', userLotData.id)
+        .eq('active', true)
+        .single();
+
+      if (licenseError || !licenseData) {
+        console.log('❌ Pas de licence active pour le lot');
+        return;
+      }
+
+      const license: License = {
+        id: licenseData.id,
+        type: licenseData.license_type,
+        duree: licenseData.duree,
+        prix: licenseData.prix,
+        dateDebut: licenseData.date_debut,
+        dateFin: licenseData.date_fin,
+        cle: licenseData.cle,
+        active: licenseData.active,
+        userLotId: licenseData.user_lot_id
+      };
+
+      // Calculer les jours restants
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endDate = new Date(license.dateFin);
+      endDate.setHours(23, 59, 59, 999);
+      const days = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      console.log('✅ Licence chargée:', license.type, 'Jours restants:', days);
+
+      setUserLicense(license);
+      setDaysRemaining(days);
+    } catch (error) {
+      console.error('❌ Erreur chargement licence:', error);
     }
   };
 
@@ -698,20 +761,28 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
                   </div>
 
                   <div className="space-y-4">
-                    {user.license && (
+                    {userLicense && (
                       <div className="bg-white rounded-lg p-4 shadow-sm">
                         <div className="flex justify-between items-center mb-3">
                           <span className="text-sm font-medium text-gray-700">Licence actuelle</span>
                           <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                            {user.license.type}
+                            {userLicense.type}
                           </span>
                         </div>
                         <div className="space-y-2 text-sm text-gray-600">
-                          <p>Expire le: <span className="font-semibold text-gray-900">{new Date(user.license.dateFin).toLocaleDateString('fr-FR')}</span></p>
-                          <p>Jours restants: <span className="font-semibold text-gray-900">
-                            {Math.ceil((new Date(user.license.dateFin).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                          <p>Expire le: <span className="font-semibold text-gray-900">{new Date(userLicense.dateFin).toLocaleDateString('fr-FR')}</span></p>
+                          <p>Jours restants: <span className={`font-semibold ${daysRemaining < 7 ? 'text-red-600' : 'text-green-600'}`}>
+                            {daysRemaining > 0 ? daysRemaining : 0} jour{daysRemaining > 1 ? 's' : ''}
                           </span></p>
                         </div>
+                      </div>
+                    )}
+
+                    {!userLicense && user.type !== 'Propriétaire' && (
+                      <div className="bg-amber-50 rounded-lg p-4 shadow-sm border border-amber-200">
+                        <p className="text-sm text-amber-800">
+                          Aucune licence active trouvée. Contactez le propriétaire.
+                        </p>
                       </div>
                     )}
 
