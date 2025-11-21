@@ -115,34 +115,28 @@ function App() {
 
   const handleLogin = async (user: User) => {
     setIsLoading(true);
-    
+
     try {
-      // Si ce n'est pas le propriétaire, vérifier et enrichir les données utilisateur
-      if (user.type !== 'Propriétaire') {
+      console.log('📝 handleLogin - User:', user);
+
+      // Le propriétaire a un accès complet sans vérification de licence
+      if (user.type === 'Propriétaire') {
+        console.log('👑 Propriétaire connecté - Accès complet');
+      } else {
+        // Pour les autres utilisateurs, vérifier la licence
         const licenseCheck = await checkUserLicenseAccess(user.username);
-        if (licenseCheck.hasAccess) {
-          // Reconstruire l'ID utilisateur pour s'assurer qu'il est au format correct
-          const userLotId = licenseCheck.userLot?.id;
-          const userType = user.type.toLowerCase();
-          // Convertir "Employé" en "employe" pour éviter les problèmes d'encodage
-          const normalizedUserType = userType === 'employé' ? 'employe' : userType;
-          const correctUserId = `${userLotId}_${normalizedUserType}`;
-          
+        if (licenseCheck.hasAccess && licenseCheck.userLot) {
+          const userLotId = licenseCheck.userLot.id;
+
           user = {
             ...user,
-            id: correctUserId, // Utiliser l'ID correctement formaté
             license: licenseCheck.license,
-            userLotId: licenseCheck.userLot?.id
+            userLotId: userLotId
           };
-          
-          // Set storage service user_lot_id for data isolation
+
           storageService.setUserLotId(userLotId);
           await indexedDBService.setUserLotId(userLotId);
-
-          // Démarrer la synchronisation automatique avec user_lot_id pour isolation
           enhancedSyncService.startAutoSync(userLotId);
-
-          // Essayer de récupérer les données depuis le cloud avec user_lot_id
           await enhancedSyncService.forceDownloadFromCloud(userLotId);
         }
       }
