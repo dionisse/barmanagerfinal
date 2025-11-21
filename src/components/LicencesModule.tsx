@@ -3,6 +3,7 @@ import { User, License, LicenseSettings, UserLot } from '../types';
 import { Shield, Users, Calendar, Key, AlertTriangle, Clock, CheckCircle, XCircle, UserPlus, Package, Zap } from 'lucide-react';
 import { getLicenses, addLicense, updateLicense, checkLicenseExpiration, getUserLots, addUserLot, updateUserLot, deleteUserLot } from '../utils/dataService';
 import { simpleAuth } from '../utils/simpleAuthService';
+import { supabase } from '../utils/supabaseService';
 
 interface LicencesModuleProps {
   user: User;
@@ -48,17 +49,76 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
   }, [user]);
 
   const loadData = async () => {
-    const licensesData = await getLicenses();
-    const userLotsData = await getUserLots();
-    
-    // Associer les lots d'utilisateurs aux licences
-    const licensesWithUserLots = licensesData.map(license => ({
-      ...license,
-      userLot: userLotsData.find(lot => lot.id === license.userLotId)
-    }));
-    
-    setLicenses(licensesWithUserLots);
-    setUserLots(userLotsData);
+    try {
+      console.log('📊 Chargement données Licences depuis Supabase');
+
+      const { data: userLotsData, error: lotsError } = await supabase
+        .from('user_lots')
+        .select('*')
+        .order('date_creation', { ascending: false });
+
+      if (lotsError) {
+        console.error('❌ Erreur chargement user_lots:', lotsError);
+        return;
+      }
+
+      const { data: licensesData, error: licensesError } = await supabase
+        .from('licenses')
+        .select('*')
+        .order('date_debut', { ascending: false });
+
+      if (licensesError) {
+        console.error('❌ Erreur chargement licenses:', licensesError);
+        return;
+      }
+
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .neq('role', 'Propriétaire');
+
+      if (usersError) {
+        console.error('❌ Erreur chargement users:', usersError);
+      }
+
+      const formattedUserLots = userLotsData?.map(lot => ({
+        id: lot.id,
+        gestionnaire: {
+          username: lot.gestionnaire_username,
+          password: '***'
+        },
+        employe: {
+          username: lot.employe_username,
+          password: '***'
+        },
+        dateCreation: lot.date_creation,
+        status: lot.status
+      })) || [];
+
+      const formattedLicenses = licensesData?.map(lic => ({
+        id: lic.id,
+        type: lic.license_type,
+        duree: lic.duree,
+        prix: lic.prix,
+        dateDebut: lic.date_debut,
+        dateFin: lic.date_fin,
+        cle: lic.cle,
+        active: lic.active,
+        userLotId: lic.user_lot_id,
+        userLot: formattedUserLots.find(lot => lot.id === lic.user_lot_id)
+      })) || [];
+
+      console.log('✅ Données chargées:', {
+        userLots: formattedUserLots.length,
+        licenses: formattedLicenses.length,
+        users: usersData?.length || 0
+      });
+
+      setUserLots(formattedUserLots);
+      setLicenses(formattedLicenses);
+    } catch (error) {
+      console.error('❌ Erreur loadData:', error);
+    }
   };
 
   const checkLicenseStatus = async () => {
