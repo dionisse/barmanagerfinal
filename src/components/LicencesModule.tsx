@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, License, LicenseSettings, UserLot } from '../types';
-import { Shield, Users, Calendar, Key, AlertTriangle, Clock, CheckCircle, XCircle, UserPlus, Package } from 'lucide-react';
+import { Shield, Users, Calendar, Key, AlertTriangle, Clock, CheckCircle, XCircle, UserPlus, Package, Zap } from 'lucide-react';
 import { getLicenses, addLicense, updateLicense, checkLicenseExpiration, getUserLots, addUserLot, updateUserLot, deleteUserLot } from '../utils/dataService';
+import { simpleAuth } from '../utils/simpleAuthService';
 
 interface LicencesModuleProps {
   user: User;
@@ -22,6 +23,15 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
     type: 'Kpêvi' as 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba',
     userLotId: ''
   });
+  const [showQuickCreate, setShowQuickCreate] = useState(false);
+  const [quickCreate, setQuickCreate] = useState({
+    gestionnaireUsername: '',
+    gestionnairePassword: '',
+    employeUsername: '',
+    employePassword: '',
+    licenseType: 'Kpêvi' as 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba'
+  });
+  const [creating, setCreating] = useState(false);
 
   const licenseSettings: LicenseSettings = {
     Kpêvi: { duree: 1, prix: 15000 },
@@ -102,6 +112,44 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
     });
     setShowAddUserLot(false);
     loadData();
+  };
+
+  const handleQuickCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+
+    try {
+      const settings = licenseSettings[quickCreate.licenseType];
+
+      const result = await simpleAuth.createUserLotWithLicense(
+        quickCreate.gestionnaireUsername,
+        quickCreate.gestionnairePassword,
+        quickCreate.employeUsername,
+        quickCreate.employePassword,
+        quickCreate.licenseType,
+        settings.duree,
+        settings.prix
+      );
+
+      if (result.success) {
+        alert('✅ Utilisateurs et licence créés avec succès!');
+        setQuickCreate({
+          gestionnaireUsername: '',
+          gestionnairePassword: '',
+          employeUsername: '',
+          employePassword: '',
+          licenseType: 'Kpêvi'
+        });
+        setShowQuickCreate(false);
+        loadData();
+      } else {
+        alert('❌ Erreur: ' + (result.message || 'Échec de la création'));
+      }
+    } catch (error) {
+      alert('❌ Erreur: ' + error.message);
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleAddLicense = async (e: React.FormEvent) => {
@@ -348,15 +396,24 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
                   <UserPlus className="h-6 w-6 text-purple-600" />
                   <h2 className="text-xl font-semibold text-gray-900">Lots d'Utilisateurs</h2>
                 </div>
-                <button
-                  onClick={() => setShowAddUserLot(true)}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
-                >
-                  Nouveau Lot
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowQuickCreate(true)}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2"
+                  >
+                    <Zap className="h-4 w-4" />
+                    Création Rapide
+                  </button>
+                  <button
+                    onClick={() => setShowAddUserLot(true)}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                  >
+                    Nouveau Lot
+                  </button>
+                </div>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="space-y-4">
                 {userLots.map((userLot) => (
@@ -592,6 +649,141 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
       </div>
 
       {/* Add User Lot Modal */}
+      {showQuickCreate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-600 to-emerald-600">
+              <div className="flex items-center gap-3">
+                <Zap className="h-8 w-8 text-white" />
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Création Rapide</h2>
+                  <p className="text-green-100 text-sm">Créez 2 utilisateurs + licence en une seule étape</p>
+                </div>
+              </div>
+            </div>
+            <form onSubmit={handleQuickCreate} className="p-6 space-y-6">
+              <div className="bg-blue-50 p-5 rounded-lg border-2 border-blue-200">
+                <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Gestionnaire
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nom d'utilisateur
+                    </label>
+                    <input
+                      type="text"
+                      value={quickCreate.gestionnaireUsername}
+                      onChange={(e) => setQuickCreate({ ...quickCreate, gestionnaireUsername: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                      placeholder="Ex: manager1"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mot de passe
+                    </label>
+                    <input
+                      type="password"
+                      value={quickCreate.gestionnairePassword}
+                      onChange={(e) => setQuickCreate({ ...quickCreate, gestionnairePassword: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                      placeholder="Mot de passe sécurisé"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 p-5 rounded-lg border-2 border-green-200">
+                <h3 className="font-bold text-green-900 mb-4 flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Employé
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nom d'utilisateur
+                    </label>
+                    <input
+                      type="text"
+                      value={quickCreate.employeUsername}
+                      onChange={(e) => setQuickCreate({ ...quickCreate, employeUsername: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      required
+                      placeholder="Ex: employe1"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mot de passe
+                    </label>
+                    <input
+                      type="password"
+                      value={quickCreate.employePassword}
+                      onChange={(e) => setQuickCreate({ ...quickCreate, employePassword: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      required
+                      placeholder="Mot de passe sécurisé"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-5 rounded-lg border-2 border-purple-200">
+                <h3 className="font-bold text-purple-900 mb-4 flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Type de Licence
+                </h3>
+                <select
+                  value={quickCreate.licenseType}
+                  onChange={(e) => setQuickCreate({ ...quickCreate, licenseType: e.target.value as any })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-medium"
+                >
+                  <option value="Kpêvi">Kpêvi - 1 mois - 15,000 FCFA</option>
+                  <option value="Kléoun">Kléoun - 3 mois - 40,000 FCFA</option>
+                  <option value="Agbon">Agbon - 6 mois - 70,000 FCFA</option>
+                  <option value="Baba">Baba - 12 mois - 120,000 FCFA</option>
+                </select>
+                <p className="text-xs text-gray-600 mt-2">
+                  ✨ La licence sera automatiquement activée pour ces utilisateurs
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCreate(false)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={creating}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-semibold flex items-center gap-2 disabled:opacity-50"
+                  disabled={creating}
+                >
+                  {creating ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      Création...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4" />
+                      Créer Tout
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showAddUserLot && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full">

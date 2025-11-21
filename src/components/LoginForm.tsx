@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User, UserType } from '../types';
 import { Lock, User as UserIcon, Building, Shield, AlertTriangle } from 'lucide-react';
-import { authenticateUser } from '../utils/dataService';
+import { simpleAuth } from '../utils/simpleAuthService';
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
@@ -20,15 +20,28 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     setError('');
 
     try {
-      const authResult = await authenticateUser(username, password, userType);
-      
+      const authResult = await simpleAuth.login(username, password);
+
       if (authResult.success && authResult.user) {
-        onLogin(authResult.user);
+        if (!authResult.hasLicenseAccess && authResult.user.role !== 'Propriétaire') {
+          setError(authResult.message || 'Accès refusé - Licence invalide ou expirée');
+          setLoading(false);
+          return;
+        }
+
+        const user: User = {
+          username: authResult.user.username,
+          password: password,
+          role: authResult.user.role as UserType
+        };
+
+        onLogin(user);
       } else {
-        setError(authResult.message || 'Erreur de connexion');
+        setError(authResult.message || 'Nom d\'utilisateur ou mot de passe incorrect');
       }
     } catch (err) {
-      setError('Erreur de connexion');
+      setError('Erreur de connexion. Vérifiez votre connexion Internet.');
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
