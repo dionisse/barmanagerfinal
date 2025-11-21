@@ -295,10 +295,16 @@ export class SupabaseService {
         .from('user_lots')
         .select('*')
         .eq('id', userLotId)
-        .single();
-      
+        .maybeSingle();
+
       if (userLotError) {
+        this.logDebug('Erreur lors de la récupération du user_lot:', userLotError);
         throw userLotError;
+      }
+
+      if (!userLot) {
+        this.logDebug('UserLot non trouvé pour ID:', userLotId);
+        return { hasAccess: false, message: 'Lot d\'utilisateurs introuvable' };
       }
       
       if (userLot.status !== 'active') {
