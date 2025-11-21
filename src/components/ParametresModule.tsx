@@ -747,8 +747,8 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
                         <Phone className="h-5 w-5 text-blue-600" />
                         <span className="font-medium text-gray-900">Téléphone</span>
                       </div>
-                      <a href="tel:+22997123456" className="text-blue-600 hover:text-blue-700 font-semibold">
-                        +229 97 12 34 56
+                      <a href="tel:+2290148090990" className="text-blue-600 hover:text-blue-700 font-semibold">
+                        +229 01 48 09 09 90
                       </a>
                       <p className="text-xs text-gray-500 mt-1">Disponible 24/7</p>
                     </div>
@@ -758,8 +758,8 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
                         <Mail className="h-5 w-5 text-blue-600" />
                         <span className="font-medium text-gray-900">Email</span>
                       </div>
-                      <a href="mailto:support@gobex.app" className="text-blue-600 hover:text-blue-700 font-semibold">
-                        support@gobex.app
+                      <a href="mailto:godwinexpertise@gmail.com" className="text-blue-600 hover:text-blue-700 font-semibold">
+                        godwinexpertise@gmail.com
                       </a>
                       <p className="text-xs text-gray-500 mt-1">Réponse sous 24h</p>
                     </div>
@@ -770,12 +770,12 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
                         <span className="font-medium text-gray-900">WhatsApp</span>
                       </div>
                       <a
-                        href="https://wa.me/22997123456"
+                        href="https://wa.me/2290148090990"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-700 font-semibold"
                       >
-                        +229 97 12 34 56
+                        +229 01 48 09 09 90
                       </a>
                       <p className="text-xs text-gray-500 mt-1">Chat instantané</p>
                     </div>
