@@ -44,21 +44,44 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
 
   const loadUserLicense = async () => {
     try {
-      if (user.type === 'Propriétaire') return;
+      if (user.type === 'Propriétaire') {
+        console.log('⚠️ Utilisateur Propriétaire, pas de licence à charger');
+        return;
+      }
 
       console.log('📝 Chargement licence pour:', user.username);
 
-      // Trouver le user_lot_id de l'utilisateur
-      const { data: userLotData, error: lotError } = await supabase
+      // Méthode 1: Chercher dans gestionnaire_username
+      let { data: userLotData, error: lotError } = await supabase
         .from('user_lots')
         .select('id')
-        .or(`gestionnaire_username.eq.${user.username},employe_username.eq.${user.username}`)
-        .single();
+        .eq('gestionnaire_username', user.username)
+        .maybeSingle();
 
-      if (lotError || !userLotData) {
+      // Si pas trouvé, chercher dans employe_username
+      if (!userLotData) {
+        console.log('🔍 Recherche dans employe_username...');
+        const result = await supabase
+          .from('user_lots')
+          .select('id')
+          .eq('employe_username', user.username)
+          .maybeSingle();
+
+        userLotData = result.data;
+        lotError = result.error;
+      }
+
+      if (lotError) {
+        console.error('❌ Erreur lors de la recherche du lot:', lotError);
+        return;
+      }
+
+      if (!userLotData) {
         console.log('❌ Pas de lot trouvé pour:', user.username);
         return;
       }
+
+      console.log('✅ User lot trouvé:', userLotData.id);
 
       // Charger la licence active pour ce lot
       const { data: licenseData, error: licenseError } = await supabase
@@ -66,12 +89,19 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
         .select('*')
         .eq('user_lot_id', userLotData.id)
         .eq('active', true)
-        .single();
+        .maybeSingle();
 
-      if (licenseError || !licenseData) {
-        console.log('❌ Pas de licence active pour le lot');
+      if (licenseError) {
+        console.error('❌ Erreur lors du chargement de la licence:', licenseError);
         return;
       }
+
+      if (!licenseData) {
+        console.log('❌ Pas de licence active pour le lot:', userLotData.id);
+        return;
+      }
+
+      console.log('✅ Licence trouvée:', licenseData);
 
       const license: License = {
         id: licenseData.id,
@@ -92,12 +122,16 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
       endDate.setHours(23, 59, 59, 999);
       const days = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-      console.log('✅ Licence chargée:', license.type, 'Jours restants:', days);
+      console.log('✅ Licence chargée:', {
+        type: license.type,
+        dateFin: license.dateFin,
+        joursRestants: days
+      });
 
       setUserLicense(license);
       setDaysRemaining(days);
     } catch (error) {
-      console.error('❌ Erreur chargement licence:', error);
+      console.error('❌ Erreur inattendue lors du chargement de la licence:', error);
     }
   };
 
