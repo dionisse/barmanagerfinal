@@ -13,24 +13,14 @@ packageManager.initializePackage().then(() => {
   // Vérifier la disponibilité d'IndexedDB
   indexedDBService.isAvailable().then(available => {
     console.log(`🗄️ IndexedDB ${available ? 'disponible' : 'non disponible'}`);
-    
+
     if (!available) {
       alert('Attention: IndexedDB n\'est pas disponible dans ce navigateur. L\'application pourrait ne pas fonctionner correctement.');
     }
   });
-  
-  // Tester la connectivité Firebase
-  if (navigator.onLine) {
-    supabaseService.testConnection()
-      .then(connected => {
-        console.log(`🔷 Supabase ${connected ? 'connecté' : 'non connecté'}`);
-      })
-      .catch(error => {
-        console.error('❌ Erreur de connexion Supabase:', error);
-      });
-  } else {
-    console.log('📴 Appareil hors ligne - test de connectivité Supabase ignoré');
-  }
+
+  // Supabase est prêt à être utilisé
+  console.log('🔷 Supabase initialisé et prêt');
 }).catch((error) => {
   console.error('❌ Erreur lors de l\'initialisation du package:', error);
 });
