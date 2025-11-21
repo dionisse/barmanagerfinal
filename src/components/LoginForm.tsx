@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, UserType } from '../types';
+import { User } from '../types';
 import { Lock, User as UserIcon, Building, Shield, AlertTriangle } from 'lucide-react';
 import { simpleAuth } from '../utils/simpleAuthService';
 
@@ -10,7 +10,6 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState<UserType>('Gestionnaire');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -85,21 +84,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                     required
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Type d'utilisateur
-                </label>
-                <select
-                  value={userType}
-                  onChange={(e) => setUserType(e.target.value as UserType)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                >
-                  <option value="Gestionnaire">Gestionnaire</option>
-                  <option value="Employé">Employé</option>
-                  <option value="Propriétaire">Propriétaire</option>
-                </select>
               </div>
 
               {error && (
