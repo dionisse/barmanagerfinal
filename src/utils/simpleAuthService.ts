@@ -92,7 +92,25 @@ class SimpleAuthService {
       if (existingUsers && existingUsers.length > 0) {
         return {
           success: false,
-          message: `Le nom d'utilisateur "${existingUsers[0].username}" existe déjà`
+          message: `Le nom d'utilisateur "${existingUsers[0].username}" existe déjà dans users`
+        };
+      }
+
+      const { data: existingLots, error: lotsCheckError } = await supabase
+        .from('user_lots')
+        .select('gestionnaire_username, employe_username')
+        .or(`gestionnaire_username.eq.${gestionnaireUsername},employe_username.eq.${employeUsername},gestionnaire_username.eq.${employeUsername},employe_username.eq.${gestionnaireUsername}`);
+
+      if (lotsCheckError) throw lotsCheckError;
+
+      if (existingLots && existingLots.length > 0) {
+        const existingUsername = existingLots[0].gestionnaire_username === gestionnaireUsername ||
+                                 existingLots[0].gestionnaire_username === employeUsername
+          ? existingLots[0].gestionnaire_username
+          : existingLots[0].employe_username;
+        return {
+          success: false,
+          message: `Le nom d'utilisateur "${existingUsername}" existe déjà dans user_lots`
         };
       }
 
