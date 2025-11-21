@@ -23,20 +23,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       const authResult = await simpleAuth.login(username, password);
 
       if (authResult.success && authResult.user) {
-        if (!authResult.hasLicenseAccess && authResult.user.role !== 'Propriétaire') {
-          setError(authResult.message || 'Accès refusé - Licence invalide ou expirée');
-          setLoading(false);
-          return;
-        }
-
-        const user: User = {
-          username: authResult.user.username,
-          password: password,
-          role: authResult.user.role as UserType
-        };
-
-        onLogin(user);
+        console.log('✅ Authentification réussie:', authResult.user);
+        onLogin(authResult.user);
       } else {
+        console.warn('❌ Échec authentification:', authResult.message);
         setError(authResult.message || 'Nom d\'utilisateur ou mot de passe incorrect');
       }
     } catch (err) {
