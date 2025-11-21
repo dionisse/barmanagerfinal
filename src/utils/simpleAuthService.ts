@@ -35,6 +35,7 @@ export class SimpleAuthService {
   async login(username: string, password: string): Promise<AuthResult> {
     try {
       console.log('🔐 SimpleAuth - Tentative de connexion:', username);
+      console.log('🔐 SimpleAuth - Longueur mot de passe:', password.length);
 
       if (!navigator.onLine) {
         return {
@@ -43,11 +44,14 @@ export class SimpleAuthService {
         };
       }
 
+      console.log('🔐 SimpleAuth - Envoi requête Supabase...');
       const { data: users, error } = await supabase
         .from('users')
         .select('*')
         .eq('username', username)
         .eq('password', password);
+
+      console.log('🔐 SimpleAuth - Réponse reçue. Erreur:', error, 'Utilisateurs:', users?.length);
 
       if (error) {
         console.error('❌ Erreur Supabase:', error);
