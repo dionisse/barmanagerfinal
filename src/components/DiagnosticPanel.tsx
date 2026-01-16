@@ -184,7 +184,8 @@ const DiagnosticPanel: React.FC = () => {
         }
         
         console.log('Lancement de la synchronisation manuelle...');
-        const result = await enhancedSyncService.manualSync(currentUser.id);
+        const syncId = currentUser.userLotId || currentUser.id;
+        const result = await enhancedSyncService.manualSync(syncId);
         alert(`Synchronisation forcée: ${result.success ? 'Réussie' : 'Échouée'}\n${result.message}`);
       } else {
         alert('Aucun utilisateur connecté pour la synchronisation');

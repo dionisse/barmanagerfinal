@@ -34,11 +34,12 @@ const SyncStatus: React.FC<SyncStatusProps> = ({ user }) => {
   }, []);
 
   const handleManualSync = async () => {
-    if (!user?.id || syncing) return;
+    const syncId = user?.userLotId || user?.id;
+    if (!syncId || syncing) return;
 
     setSyncing(true);
     try {
-      const result = await syncService.manualSync(user.id);
+      const result = await syncService.manualSync(syncId);
       if (result.success) {
         setLastSync(new Date().toISOString());
       }

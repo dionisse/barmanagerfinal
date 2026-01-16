@@ -47,7 +47,8 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ user }) => {
   }, []);
 
   const handleManualSync = async () => {
-    if (!user?.id || syncing) return;
+    const syncId = user?.userLotId || user?.id;
+    if (!syncId || syncing) return;
 
     setSyncing(true);
     console.log('Tentative de synchronisation manuelle depuis l\'indicateur...');
@@ -60,7 +61,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ user }) => {
         return;
       }
 
-      const result = await enhancedSyncService.manualSync(user.id);
+      const result = await enhancedSyncService.manualSync(syncId);
 
       const status = await enhancedSyncService.getSyncStatus();
       setSyncStatus(status);
