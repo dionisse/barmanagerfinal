@@ -435,87 +435,135 @@ export class IndexedDBService {
     }
 
     try {
+      // Fonction helper pour valider et filtrer les objets avec ID
+      const validateItems = (items: any[], storeName: string): any[] => {
+        if (!Array.isArray(items)) return [];
+        const validItems = items.filter(item => item && item.id);
+        const invalidCount = items.length - validItems.length;
+        if (invalidCount > 0) {
+          this.logDebug(`${storeName}: ${invalidCount} objets sans ID ignorés`);
+        }
+        return validItems;
+      };
+
       // Produits
       if (data.products && Array.isArray(data.products)) {
-        const productsTx = this.db.transaction('products', 'readwrite');
-        await Promise.all(data.products.map((product: any) => productsTx.store.put(product)));
-        await productsTx.done;
+        const validProducts = validateItems(data.products, 'products');
+        if (validProducts.length > 0) {
+          const productsTx = this.db.transaction('products', 'readwrite');
+          await Promise.all(validProducts.map((product: any) => productsTx.store.put(product)));
+          await productsTx.done;
+        }
       }
 
       // Ventes
       if (data.sales && Array.isArray(data.sales)) {
-        const salesTx = this.db.transaction('sales', 'readwrite');
-        await Promise.all(data.sales.map((sale: any) => salesTx.store.put(sale)));
-        await salesTx.done;
+        const validSales = validateItems(data.sales, 'sales');
+        if (validSales.length > 0) {
+          const salesTx = this.db.transaction('sales', 'readwrite');
+          await Promise.all(validSales.map((sale: any) => salesTx.store.put(sale)));
+          await salesTx.done;
+        }
       }
 
       // Achats
       if (data.purchases && Array.isArray(data.purchases)) {
-        const purchasesTx = this.db.transaction('purchases', 'readwrite');
-        await Promise.all(data.purchases.map((purchase: any) => purchasesTx.store.put(purchase)));
-        await purchasesTx.done;
+        const validPurchases = validateItems(data.purchases, 'purchases');
+        if (validPurchases.length > 0) {
+          const purchasesTx = this.db.transaction('purchases', 'readwrite');
+          await Promise.all(validPurchases.map((purchase: any) => purchasesTx.store.put(purchase)));
+          await purchasesTx.done;
+        }
       }
 
       // Achats multiples
       if (data.multiPurchases && Array.isArray(data.multiPurchases)) {
-        const multiPurchasesTx = this.db.transaction('multi_purchases', 'readwrite');
-        await Promise.all(data.multiPurchases.map((purchase: any) => multiPurchasesTx.store.put(purchase)));
-        await multiPurchasesTx.done;
+        const validMultiPurchases = validateItems(data.multiPurchases, 'multi_purchases');
+        if (validMultiPurchases.length > 0) {
+          const multiPurchasesTx = this.db.transaction('multi_purchases', 'readwrite');
+          await Promise.all(validMultiPurchases.map((purchase: any) => multiPurchasesTx.store.put(purchase)));
+          await multiPurchasesTx.done;
+        }
       }
 
       // Emballages
       if (data.packaging && Array.isArray(data.packaging)) {
-        const packagingTx = this.db.transaction('packaging', 'readwrite');
-        await Promise.all(data.packaging.map((pkg: any) => packagingTx.store.put(pkg)));
-        await packagingTx.done;
+        const validPackaging = validateItems(data.packaging, 'packaging');
+        if (validPackaging.length > 0) {
+          const packagingTx = this.db.transaction('packaging', 'readwrite');
+          await Promise.all(validPackaging.map((pkg: any) => packagingTx.store.put(pkg)));
+          await packagingTx.done;
+        }
       }
 
       // Achats d'emballages
       if (data.packagingPurchases && Array.isArray(data.packagingPurchases)) {
-        const packagingPurchasesTx = this.db.transaction('packaging_purchases', 'readwrite');
-        await Promise.all(data.packagingPurchases.map((purchase: any) => packagingPurchasesTx.store.put(purchase)));
-        await packagingPurchasesTx.done;
+        const validPackagingPurchases = validateItems(data.packagingPurchases, 'packaging_purchases');
+        if (validPackagingPurchases.length > 0) {
+          const packagingPurchasesTx = this.db.transaction('packaging_purchases', 'readwrite');
+          await Promise.all(validPackagingPurchases.map((purchase: any) => packagingPurchasesTx.store.put(purchase)));
+          await packagingPurchasesTx.done;
+        }
       }
 
       // Dépenses
       if (data.expenses && Array.isArray(data.expenses)) {
-        const expensesTx = this.db.transaction('expenses', 'readwrite');
-        await Promise.all(data.expenses.map((expense: any) => expensesTx.store.put(expense)));
-        await expensesTx.done;
+        const validExpenses = validateItems(data.expenses, 'expenses');
+        if (validExpenses.length > 0) {
+          const expensesTx = this.db.transaction('expenses', 'readwrite');
+          await Promise.all(validExpenses.map((expense: any) => expensesTx.store.put(expense)));
+          await expensesTx.done;
+        }
       }
 
       // Inventaires
       if (data.inventoryRecords && Array.isArray(data.inventoryRecords)) {
-        const inventoryTx = this.db.transaction('inventory_records', 'readwrite');
-        await Promise.all(data.inventoryRecords.map((record: any) => inventoryTx.store.put(record)));
-        await inventoryTx.done;
-      }
-      
-      // Lots d'utilisateurs
-      if (data.userLots && Array.isArray(data.userLots)) {
-        const userLotsTx = this.db.transaction('user_lots', 'readwrite');
-        await Promise.all(data.userLots.map((lot: any) => userLotsTx.store.put(lot)));
-        await userLotsTx.done;
-      }
-      
-      // Licences
-      if (data.licenses && Array.isArray(data.licenses)) {
-        const licensesTx = this.db.transaction('licenses', 'readwrite');
-        await Promise.all(data.licenses.map((license: any) => licensesTx.store.put(license)));
-        await licensesTx.done;
-      }
-      
-      // Utilisateurs
-      if (data.users && Array.isArray(data.users)) {
-        const usersTx = this.db.transaction('users', 'readwrite');
-        await Promise.all(data.users.map((user: any) => usersTx.store.put(user)));
-        await usersTx.done;
+        const validInventory = validateItems(data.inventoryRecords, 'inventory_records');
+        if (validInventory.length > 0) {
+          const inventoryTx = this.db.transaction('inventory_records', 'readwrite');
+          await Promise.all(validInventory.map((record: any) => inventoryTx.store.put(record)));
+          await inventoryTx.done;
+        }
       }
 
-      // Paramètres
+      // Lots d'utilisateurs
+      if (data.userLots && Array.isArray(data.userLots)) {
+        const validUserLots = validateItems(data.userLots, 'user_lots');
+        if (validUserLots.length > 0) {
+          const userLotsTx = this.db.transaction('user_lots', 'readwrite');
+          await Promise.all(validUserLots.map((lot: any) => userLotsTx.store.put(lot)));
+          await userLotsTx.done;
+        }
+      }
+
+      // Licences
+      if (data.licenses && Array.isArray(data.licenses)) {
+        const validLicenses = validateItems(data.licenses, 'licenses');
+        if (validLicenses.length > 0) {
+          const licensesTx = this.db.transaction('licenses', 'readwrite');
+          await Promise.all(validLicenses.map((license: any) => licensesTx.store.put(license)));
+          await licensesTx.done;
+        }
+      }
+
+      // Utilisateurs
+      if (data.users && Array.isArray(data.users)) {
+        const validUsers = validateItems(data.users, 'users');
+        if (validUsers.length > 0) {
+          const usersTx = this.db.transaction('users', 'readwrite');
+          await Promise.all(validUsers.map((user: any) => usersTx.store.put(user)));
+          await usersTx.done;
+        }
+      }
+
+      // Paramètres - structure spéciale pour settings
       if (data.settings) {
         const settingsTx = this.db.transaction('settings', 'readwrite');
-        await settingsTx.store.put(data.settings);
+        // S'assurer que settings a la structure correcte avec key
+        const settingsToSave = data.settings.key
+          ? data.settings
+          : { key: 'app_settings', value: data.settings };
+        await settingsTx.store.put(settingsToSave);
         await settingsTx.done;
       }
 
