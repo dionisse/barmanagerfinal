@@ -424,15 +424,18 @@ export class EnhancedSyncService {
     };
   }
 
-  // Vérifier si l'ID utilisateur est au format valide (userLotId_userType)
+  // Vérifier si l'ID utilisateur est au format valide
   private isValidUserId(userId: string): boolean {
-    // Format attendu: userLotId_userType (ex: 1750741015407_gestionnaire)
-    // Ou format propriétaire: owner-001
+    // Format propriétaire: owner-001
     if (userId === 'owner-001') return true;
-    
+
+    // Format user_lot_id: UL-XXXXXX (format actuel)
+    if (userId.startsWith('UL-') && userId.length > 3) return true;
+
+    // Format legacy: userLotId_userType (ex: 1750741015407_gestionnaire)
     const parts = userId.split('_');
-    return parts.length === 2 && 
-           parts[0].length > 0 && 
+    return parts.length === 2 &&
+           parts[0].length > 0 &&
            (parts[1] === 'gestionnaire' || parts[1] === 'employe' || parts[1] === 'employé');
   }
 
