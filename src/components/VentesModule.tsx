@@ -44,6 +44,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     productId: '',
     initialStock: '',
     finalStock: '',
+    stockEntry: '0',
     damaged: '0',
     broken: '0',
     leaking: '0',
@@ -55,6 +56,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     productName: string;
     initialStock: string;
     finalStock: string;
+    stockEntry: string;
     damaged: string;
     broken: string;
     leaking: string;
@@ -82,6 +84,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
         productName: product.nom,
         initialStock: '',
         finalStock: '',
+        stockEntry: '0',
         damaged: '0',
         broken: '0',
         leaking: '0',
@@ -378,21 +381,23 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
   const calculateQuantitySold = () => {
     const initial = parseInt(stockCalcFormData.initialStock || '0');
     const final = parseInt(stockCalcFormData.finalStock || '0');
+    const stockEntry = parseInt(stockCalcFormData.stockEntry || '0');
     const damaged = parseInt(stockCalcFormData.damaged || '0');
     const broken = parseInt(stockCalcFormData.broken || '0');
     const leaking = parseInt(stockCalcFormData.leaking || '0');
 
-    return final - initial - (damaged + broken + leaking);
+    return final - initial - (damaged + broken + leaking) + stockEntry;
   };
 
   const calculateRowQuantitySold = (row: ProductRow): number => {
     const initial = parseInt(row.initialStock || '0');
     const final = parseInt(row.finalStock || '0');
+    const stockEntry = parseInt(row.stockEntry || '0');
     const damaged = parseInt(row.damaged || '0');
     const broken = parseInt(row.broken || '0');
     const leaking = parseInt(row.leaking || '0');
 
-    return final - initial - (damaged + broken + leaking);
+    return final - initial - (damaged + broken + leaking) + stockEntry;
   };
 
   const updateProductRow = (index: number, field: keyof ProductRow, value: string) => {
@@ -423,6 +428,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
           productName: row.productName,
           initialStock: parseInt(row.initialStock),
           finalStock: parseInt(row.finalStock),
+          stockEntry: parseInt(row.stockEntry || '0'),
           damaged: parseInt(row.damaged || '0'),
           broken: parseInt(row.broken || '0'),
           leaking: parseInt(row.leaking || '0'),
@@ -463,6 +469,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
       productName: selectedProduct.nom,
       initialStock: parseInt(stockCalcFormData.initialStock),
       finalStock: parseInt(stockCalcFormData.finalStock),
+      stockEntry: parseInt(stockCalcFormData.stockEntry || '0'),
       damaged: parseInt(stockCalcFormData.damaged || '0'),
       broken: parseInt(stockCalcFormData.broken || '0'),
       leaking: parseInt(stockCalcFormData.leaking || '0'),
@@ -479,6 +486,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
         productId: '',
         initialStock: '',
         finalStock: '',
+        stockEntry: '0',
         damaged: '0',
         broken: '0',
         leaking: '0',
@@ -791,7 +799,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
           <div className="p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">Calcul de Ventes par Stock</h3>
             <p className="text-sm text-gray-600 mt-2">
-              Formule: Stock Final - Stock Initial - (Endommagés + Cassés + Fuyants) = Quantité Vendue
+              Formule: Stock Final - Stock Initial - (Endommagés + Cassés + Fuyants) + Entrée en Stock = Quantité Vendue
             </p>
           </div>
 
@@ -807,6 +815,9 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                     Stock Final après Inventaire
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Entrée en Stock
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                     Quantité Endommagée
@@ -843,6 +854,16 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                         type="number"
                         value={row.finalStock}
                         onChange={(e) => updateProductRow(index, 'finalStock', e.target.value)}
+                        className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                        min="0"
+                        placeholder="0"
+                      />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={row.stockEntry}
+                        onChange={(e) => updateProductRow(index, 'stockEntry', e.target.value)}
                         className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
                         min="0"
                         placeholder="0"
@@ -948,6 +969,9 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                     Stock Final
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Entrée Stock
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Pertes
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -975,6 +999,9 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {calc.finalStock}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {calc.stockEntry}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="text-red-600">

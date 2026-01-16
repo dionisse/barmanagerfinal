@@ -186,6 +186,7 @@ export interface StockSalesCalculation {
   productName: string;
   initialStock: number;
   finalStock: number;
+  stockEntry: number;
   damaged: number;
   broken: number;
   leaking: number;
