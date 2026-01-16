@@ -391,10 +391,88 @@ export class IndexedDBService {
     }
   }
 
+  // Méthode pour forcer la migration depuis localStorage
+  async forceMigrationFromLocalStorage(): Promise<void> {
+    if (!this.db) {
+      await this.initDB();
+      if (!this.db) {
+        throw new Error('IndexedDB non disponible');
+      }
+    }
+
+    try {
+      this.logDebug('Vérification et migration des données depuis localStorage');
+
+      // Liste des clés à migrer
+      const keysToMigrate = [
+        { localKey: 'gobex_products', store: 'products' as keyof GobexDB },
+        { localKey: 'gobex_sales', store: 'sales' as keyof GobexDB },
+        { localKey: 'gobex_purchases', store: 'purchases' as keyof GobexDB },
+        { localKey: 'gobex_multi_purchases', store: 'multi_purchases' as keyof GobexDB },
+        { localKey: 'gobex_packaging', store: 'packaging' as keyof GobexDB },
+        { localKey: 'gobex_packaging_purchases', store: 'packaging_purchases' as keyof GobexDB },
+        { localKey: 'gobex_expenses', store: 'expenses' as keyof GobexDB },
+        { localKey: 'gobex_inventory_records', store: 'inventory_records' as keyof GobexDB },
+        { localKey: 'gobex_user_lots', store: 'user_lots' as keyof GobexDB },
+        { localKey: 'gobex_licenses', store: 'licenses' as keyof GobexDB },
+        { localKey: 'gobex_users', store: 'users' as keyof GobexDB }
+      ];
+
+      for (const { localKey, store } of keysToMigrate) {
+        const data = localStorage.getItem(localKey);
+        if (data) {
+          try {
+            const parsedData = JSON.parse(data);
+
+            if (Array.isArray(parsedData) && parsedData.length > 0) {
+              // Vérifier combien d'éléments sont déjà dans IndexedDB
+              const existingData = await this.getAllData(store);
+              const existingIds = new Set(existingData.map((item: any) => item.id));
+
+              // Migrer seulement les éléments qui n'existent pas encore
+              let migratedCount = 0;
+              for (const item of parsedData) {
+                if (item && item.id && !existingIds.has(item.id)) {
+                  await this.saveData(store, item);
+                  migratedCount++;
+                }
+              }
+
+              if (migratedCount > 0) {
+                this.logDebug(`Migré ${migratedCount} nouveaux éléments de ${localKey} vers ${store}`);
+              }
+            }
+          } catch (err) {
+            console.error(`Erreur lors de la migration de ${localKey}:`, err);
+          }
+        }
+      }
+
+      // Migrer les paramètres si nécessaire
+      const settingsData = localStorage.getItem('gobex_settings');
+      if (settingsData) {
+        try {
+          const parsedSettings = JSON.parse(settingsData);
+          const existingSettings = await this.getDataById('settings', 'app_settings');
+          if (!existingSettings) {
+            await this.saveData('settings', { key: 'app_settings', value: parsedSettings });
+            this.logDebug('Paramètres migrés depuis localStorage');
+          }
+        } catch (err) {
+          console.error('Erreur lors de la migration des paramètres:', err);
+        }
+      }
+
+      this.logDebug('Migration depuis localStorage terminée');
+    } catch (error) {
+      console.error('Erreur lors de la migration forcée depuis localStorage:', error);
+    }
+  }
+
   // Méthode pour collecter toutes les données pour la synchronisation
   async collectAllData(): Promise<any> {
     const data: any = {};
-    
+
     try {
       if (!this.db) {
         await this.initDB();
@@ -402,7 +480,10 @@ export class IndexedDBService {
           throw new Error('IndexedDB non disponible');
         }
       }
-      
+
+      // Forcer la migration depuis localStorage avant la collecte
+      await this.forceMigrationFromLocalStorage();
+
       data.products = await this.getAllData('products');
       data.sales = await this.getAllData('sales');
       data.purchases = await this.getAllData('purchases');
@@ -413,11 +494,20 @@ export class IndexedDBService {
       data.inventoryRecords = await this.getAllData('inventory_records');
       data.userLots = await this.getAllData('user_lots');
       data.licenses = await this.getAllData('licenses');
-      
+      data.users = await this.getAllData('users');
+
       // Récupérer les paramètres
       const settings = await this.getDataById('settings', 'app_settings');
       data.settings = settings?.value || {}; // Utiliser un objet vide si settings est undefined
-      
+
+      this.logDebug('Collecte terminée:', {
+        products: data.products.length,
+        sales: data.sales.length,
+        purchases: data.purchases.length,
+        users: data.users.length,
+        userLots: data.userLots.length
+      });
+
       return data;
     } catch (error) {
       console.error('Erreur lors de la collecte des données:', error);
