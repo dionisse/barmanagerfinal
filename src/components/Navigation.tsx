@@ -118,6 +118,8 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
 
           <div className="flex items-center space-x-4">
+            <SyncStatusIndicator user={user} />
+
             {/* Affichage des informations de licence */}
             {licenseInfo && (
               <div className={`flex items-center space-x-2 px-3 py-1 rounded-lg ${

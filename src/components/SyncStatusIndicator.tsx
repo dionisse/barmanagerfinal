@@ -49,47 +49,28 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ user }) => {
   const handleManualSync = async () => {
     if (!user?.id || syncing) return;
 
+    setSyncing(true);
     console.log('Tentative de synchronisation manuelle depuis l\'indicateur...');
-    console.log('Tentative de synchronisation manuelle depuis l\'indicateur...');
-      // Vérifier d'abord la connectivité
-      const connected = await supabaseService.testConnection();
-      if (!connected) {
-        console.error('Impossible de se connecter à Supabase');
-        alert('Erreur de connexion à Supabase. Vérifiez votre configuration.');
-        return;
-      }
-      
-      // Effectuer la synchronisation
-      const result = await enhancedSyncService.manualSync(user.id);
-      
+
     try {
-      // Vérifier d'abord la connectivité
       const connected = await supabaseService.testConnection();
       if (!connected) {
         console.error('Impossible de se connecter à Supabase');
         alert('Erreur de connexion à Supabase. Vérifiez votre configuration.');
         return;
       }
-      
-      if (!connected) {
-        return;
-      }
-      
-      // Effectuer la synchronisation
+
       const result = await enhancedSyncService.manualSync(user.id);
-      
-      // Mettre à jour le statut après la synchronisation
+
       const status = await enhancedSyncService.getSyncStatus();
-      if (!result.success) {
-        console.error('Échec de la synchronisation:', result.message);
-      }
-      if (!result.success) {
-        console.error('Échec de la synchronisation:', result.message);
-      }
       setSyncStatus(status);
+
+      if (!result.success) {
+        console.error('Échec de la synchronisation:', result.message);
+        alert(`Erreur de synchronisation: ${result.message}`);
+      }
     } catch (error) {
       console.error('Erreur lors de la synchronisation manuelle:', error);
-      alert(`Erreur de synchronisation: ${error.message}`);
       alert(`Erreur de synchronisation: ${error.message}`);
     } finally {
       setSyncing(false);
@@ -145,10 +126,6 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ user }) => {
     if (diffMins < 10) return <CheckCircle className="h-4 w-4" />;
     return <Clock className="h-4 w-4" />;
   };
-
-  if (user?.type === 'Propriétaire') {
-    return null; // Le propriétaire n'a pas besoin de synchronisation
-  }
 
   return (
     <div className="flex items-center space-x-3">

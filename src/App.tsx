@@ -47,7 +47,17 @@ function App() {
     
     // Pour le propriétaire, la session est toujours valide
     if (user.type === 'Propriétaire') {
-      setCurrentUser(user);
+      const ownerUserId = 'owner-001';
+      const updatedUser = {
+        ...user,
+        id: ownerUserId
+      };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('gobex_current_user', JSON.stringify(updatedUser));
+
+      storageService.setUserLotId(null);
+      await indexedDBService.setUserLotId(null);
+      enhancedSyncService.startAutoSync(ownerUserId);
       setIsLoading(false);
       return;
     }
@@ -122,6 +132,17 @@ function App() {
       // Le propriétaire a un accès complet sans vérification de licence
       if (user.type === 'Propriétaire') {
         console.log('👑 Propriétaire connecté - Accès complet');
+
+        const ownerUserId = 'owner-001';
+        user = {
+          ...user,
+          id: ownerUserId
+        };
+
+        storageService.setUserLotId(null);
+        await indexedDBService.setUserLotId(null);
+        enhancedSyncService.startAutoSync(ownerUserId);
+        await enhancedSyncService.forceDownloadFromCloud(ownerUserId);
       } else {
         // Pour les autres utilisateurs, vérifier la licence
         const licenseCheck = await checkUserLicenseAccess(user.username);
@@ -139,12 +160,6 @@ function App() {
           enhancedSyncService.startAutoSync(userLotId);
           await enhancedSyncService.forceDownloadFromCloud(userLotId);
         }
-      }
-      
-      // Set storage service user_lot_id (for owner, use null)
-      if (user.type === 'Propriétaire') {
-        storageService.setUserLotId(null);
-        await indexedDBService.setUserLotId(null);
       }
 
       setCurrentUser(user);
