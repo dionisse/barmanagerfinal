@@ -37,6 +37,18 @@ const EmballagesModule: React.FC<EmballagesModuleProps> = ({ user }) => {
 
   useEffect(() => {
     loadData();
+
+    // Écouter l'événement de restauration des données
+    const handleDataRestored = () => {
+      console.log('Données restaurées, rechargement du module Emballages...');
+      loadData();
+    };
+
+    window.addEventListener('dataRestored', handleDataRestored);
+
+    return () => {
+      window.removeEventListener('dataRestored', handleDataRestored);
+    };
   }, []);
 
   const loadData = async () => {

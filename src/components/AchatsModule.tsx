@@ -42,6 +42,18 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
   useEffect(() => {
     loadData();
     generateOrderNumber();
+
+    // Écouter l'événement de restauration des données
+    const handleDataRestored = () => {
+      console.log('Données restaurées, rechargement du module Achats...');
+      loadData();
+    };
+
+    window.addEventListener('dataRestored', handleDataRestored);
+
+    return () => {
+      window.removeEventListener('dataRestored', handleDataRestored);
+    };
   }, []);
 
   useEffect(() => {

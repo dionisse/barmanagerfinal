@@ -46,6 +46,21 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
       loadData();
       checkLicenseStatus();
     }
+
+    // Écouter l'événement de restauration des données
+    const handleDataRestored = () => {
+      console.log('Données restaurées, rechargement du module Licences...');
+      if (user.type === 'Propriétaire') {
+        loadData();
+        checkLicenseStatus();
+      }
+    };
+
+    window.addEventListener('dataRestored', handleDataRestored);
+
+    return () => {
+      window.removeEventListener('dataRestored', handleDataRestored);
+    };
   }, [user]);
 
   const loadData = async () => {

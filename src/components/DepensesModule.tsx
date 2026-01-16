@@ -38,6 +38,18 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
 
   useEffect(() => {
     loadExpenses();
+
+    // Écouter l'événement de restauration des données
+    const handleDataRestored = () => {
+      console.log('Données restaurées, rechargement du module Dépenses...');
+      loadExpenses();
+    };
+
+    window.addEventListener('dataRestored', handleDataRestored);
+
+    return () => {
+      window.removeEventListener('dataRestored', handleDataRestored);
+    };
   }, []);
 
   const loadExpenses = async () => {

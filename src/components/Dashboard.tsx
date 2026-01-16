@@ -29,6 +29,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       setStats(dashboardStats);
     };
     loadStats();
+
+    // Écouter l'événement de restauration des données
+    const handleDataRestored = () => {
+      console.log('Données restaurées, rechargement du Dashboard...');
+      loadStats();
+    };
+
+    window.addEventListener('dataRestored', handleDataRestored);
+
+    return () => {
+      window.removeEventListener('dataRestored', handleDataRestored);
+    };
   }, []);
 
   const statCards = [

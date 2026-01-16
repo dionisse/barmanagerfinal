@@ -658,6 +658,17 @@ export class IndexedDBService {
       }
 
       this.logDebug('Toutes les données ont été restaurées avec succès');
+
+      // Émettre un événement pour notifier l'application du changement de données
+      window.dispatchEvent(new CustomEvent('dataRestored', {
+        detail: {
+          timestamp: new Date().toISOString(),
+          productsCount: data.products?.length || 0,
+          salesCount: data.sales?.length || 0,
+          purchasesCount: data.purchases?.length || 0
+        }
+      }));
+
     } catch (error) {
       console.error('Erreur lors de la restauration des données:', error);
       throw error;

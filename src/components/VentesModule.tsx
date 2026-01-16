@@ -75,6 +75,19 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     loadData();
     generateInvoiceNumber();
     initializeProductRows();
+
+    // Écouter l'événement de restauration des données
+    const handleDataRestored = () => {
+      console.log('Données restaurées, rechargement du module Ventes...');
+      loadData();
+      initializeProductRows();
+    };
+
+    window.addEventListener('dataRestored', handleDataRestored);
+
+    return () => {
+      window.removeEventListener('dataRestored', handleDataRestored);
+    };
   }, []);
 
   useEffect(() => {
