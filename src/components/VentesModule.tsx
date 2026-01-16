@@ -42,6 +42,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
   });
   const [stockCalcFormData, setStockCalcFormData] = useState({
     productId: '',
+    periodStart: new Date().toISOString().split('T')[0],
+    periodEnd: new Date().toISOString().split('T')[0],
     initialStock: '',
     finalStock: '',
     stockEntry: '0',
@@ -64,6 +66,10 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
   }
 
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
+  const [bulkPeriod, setBulkPeriod] = useState({
+    periodStart: new Date().toISOString().split('T')[0],
+    periodEnd: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     loadData();
@@ -424,6 +430,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
         const newCalculation: StockSalesCalculation = {
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           date: date,
+          periodStart: bulkPeriod.periodStart,
+          periodEnd: bulkPeriod.periodEnd,
           productId: row.productId,
           productName: row.productName,
           initialStock: parseInt(row.initialStock),
@@ -465,6 +473,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     const newCalculation: StockSalesCalculation = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       date: new Date().toISOString().split('T')[0],
+      periodStart: stockCalcFormData.periodStart,
+      periodEnd: stockCalcFormData.periodEnd,
       productId: stockCalcFormData.productId,
       productName: selectedProduct.nom,
       initialStock: parseInt(stockCalcFormData.initialStock),
@@ -484,6 +494,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
       alert('Calcul de ventes enregistré avec succès !');
       setStockCalcFormData({
         productId: '',
+        periodStart: new Date().toISOString().split('T')[0],
+        periodEnd: new Date().toISOString().split('T')[0],
         initialStock: '',
         finalStock: '',
         stockEntry: '0',
@@ -803,6 +815,33 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
             </p>
           </div>
 
+          <div className="p-6 bg-blue-50 border-b border-gray-200">
+            <div className="flex items-center space-x-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Période de Calcul - Date de Début
+                </label>
+                <input
+                  type="date"
+                  value={bulkPeriod.periodStart}
+                  onChange={(e) => setBulkPeriod({ ...bulkPeriod, periodStart: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Période de Calcul - Date de Fin
+                </label>
+                <input
+                  type="date"
+                  value={bulkPeriod.periodEnd}
+                  onChange={(e) => setBulkPeriod({ ...bulkPeriod, periodEnd: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
@@ -960,6 +999,9 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                     Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Période
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Produit
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -990,6 +1032,14 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                   <tr key={calc.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {new Date(calc.date).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-gray-500">Du:</span>
+                        <span className="font-medium">{new Date(calc.periodStart).toLocaleDateString('fr-FR')}</span>
+                        <span className="text-xs text-gray-500 mt-1">Au:</span>
+                        <span className="font-medium">{new Date(calc.periodEnd).toLocaleDateString('fr-FR')}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {calc.productName}

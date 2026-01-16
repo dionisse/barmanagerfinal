@@ -182,6 +182,8 @@ export interface Settings {
 export interface StockSalesCalculation {
   id: string;
   date: string;
+  periodStart: string;
+  periodEnd: string;
   productId: string;
   productName: string;
   initialStock: number;
