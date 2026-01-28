@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Sale, Product, StockSalesCalculation } from '../types';
 import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, Edit, AlertTriangle, CheckCircle, XCircle, Calculator } from 'lucide-react';
-import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale, getStockSalesCalculations, addStockSalesCalculation, deleteStockSalesCalculation, getPurchases } from '../utils/dataService';
+import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale, getStockSalesCalculations, addStockSalesCalculation, deleteStockSalesCalculation, getPurchases, getMultiPurchases } from '../utils/dataService';
 import { generateInvoicePDF, autoGenerateSimpleInvoice } from '../utils/pdfService';
 import { emecefService } from '../utils/emecefService';
 import { getSettings } from '../utils/dataService';
@@ -142,16 +142,29 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
 
   const calculateStockEntriesForPeriod = async (periodStart: string, periodEnd: string): Promise<Map<string, number>> => {
     const purchases = await getPurchases();
+    const multiPurchases = await getMultiPurchases();
     const stockEntries = new Map<string, number>();
 
+    const startDate = new Date(periodStart);
+    const endDate = new Date(periodEnd);
+
     purchases.forEach(purchase => {
-      const purchaseDate = new Date(purchase.date);
-      const startDate = new Date(periodStart);
-      const endDate = new Date(periodEnd);
+      const purchaseDate = new Date(purchase.dateAchat);
 
       if (purchaseDate >= startDate && purchaseDate <= endDate) {
         const currentEntry = stockEntries.get(purchase.produitId) || 0;
         stockEntries.set(purchase.produitId, currentEntry + purchase.quantite);
+      }
+    });
+
+    multiPurchases.forEach(multiPurchase => {
+      const purchaseDate = new Date(multiPurchase.dateAchat);
+
+      if (purchaseDate >= startDate && purchaseDate <= endDate) {
+        multiPurchase.items.forEach(item => {
+          const currentEntry = stockEntries.get(item.produitId) || 0;
+          stockEntries.set(item.produitId, currentEntry + item.quantite);
+        });
       }
     });
 
