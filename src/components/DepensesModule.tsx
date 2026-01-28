@@ -16,6 +16,7 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
   const [selectedType, setSelectedType] = useState('');
   const [formData, setFormData] = useState({
     description: '',
+    date: new Date().toISOString().split('T')[0],
     montant: '',
     categorie: '',
     destinataire: '',
@@ -60,6 +61,7 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
   const resetForm = () => {
     setFormData({
       description: '',
+      date: new Date().toISOString().split('T')[0],
       montant: '',
       categorie: '',
       destinataire: '',
@@ -72,6 +74,7 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
     setEditingExpense(expense);
     setFormData({
       description: expense.description,
+      date: expense.date,
       montant: expense.montant.toString(),
       categorie: expense.categorie,
       destinataire: expense.destinataire,
@@ -82,10 +85,10 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const expenseData: Expense = {
       id: editingExpense?.id || Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
+      date: formData.date,
       description: formData.description,
       montant: parseFloat(formData.montant),
       categorie: formData.categorie,
@@ -253,7 +256,20 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
                   required
                 />
               </div>
-              
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Type
