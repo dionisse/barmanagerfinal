@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Sale, Product, StockSalesCalculation } from '../types';
 import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, Edit, AlertTriangle, CheckCircle, XCircle, Calculator } from 'lucide-react';
-import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale, getStockSalesCalculations, addStockSalesCalculation, deleteStockSalesCalculation } from '../utils/dataService';
+import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale, getStockSalesCalculations, addStockSalesCalculation, deleteStockSalesCalculation, getPurchases } from '../utils/dataService';
 import { generateInvoicePDF, autoGenerateSimpleInvoice } from '../utils/pdfService';
 import { emecefService } from '../utils/emecefService';
 import { getSettings } from '../utils/dataService';
@@ -96,6 +96,24 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     }
   }, [products]);
 
+  useEffect(() => {
+    if (productRows.length > 0) {
+      updateStockEntriesForAllRows();
+    }
+  }, [bulkPeriod.periodStart, bulkPeriod.periodEnd]);
+
+  useEffect(() => {
+    const updateSingleStockEntry = async () => {
+      if (stockCalcFormData.productId && stockCalcFormData.periodStart && stockCalcFormData.periodEnd) {
+        const stockEntries = await calculateStockEntriesForPeriod(stockCalcFormData.periodStart, stockCalcFormData.periodEnd);
+        const entry = stockEntries.get(stockCalcFormData.productId) || 0;
+        setStockCalcFormData(prev => ({ ...prev, stockEntry: entry.toString() }));
+      }
+    };
+
+    updateSingleStockEntry();
+  }, [stockCalcFormData.periodStart, stockCalcFormData.periodEnd, stockCalcFormData.productId]);
+
   const initializeProductRows = () => {
     if (products.length > 0) {
       const rows: ProductRow[] = products.map(product => ({
@@ -120,6 +138,35 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     setSales(salesData);
     setProducts(productsData);
     setStockCalculations(stockCalcData);
+  };
+
+  const calculateStockEntriesForPeriod = async (periodStart: string, periodEnd: string): Promise<Map<string, number>> => {
+    const purchases = await getPurchases();
+    const stockEntries = new Map<string, number>();
+
+    purchases.forEach(purchase => {
+      const purchaseDate = new Date(purchase.date);
+      const startDate = new Date(periodStart);
+      const endDate = new Date(periodEnd);
+
+      if (purchaseDate >= startDate && purchaseDate <= endDate) {
+        const currentEntry = stockEntries.get(purchase.produitId) || 0;
+        stockEntries.set(purchase.produitId, currentEntry + purchase.quantite);
+      }
+    });
+
+    return stockEntries;
+  };
+
+  const updateStockEntriesForAllRows = async () => {
+    const stockEntries = await calculateStockEntriesForPeriod(bulkPeriod.periodStart, bulkPeriod.periodEnd);
+
+    const updatedRows = productRows.map(row => ({
+      ...row,
+      stockEntry: (stockEntries.get(row.productId) || 0).toString()
+    }));
+
+    setProductRows(updatedRows);
   };
 
   const generateInvoiceNumber = () => {
@@ -853,6 +900,12 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                 />
               </div>
             </div>
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start space-x-2">
+              <Calculator className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-green-800">
+                <strong>Information:</strong> Les entrées en stock sont calculées automatiquement à partir des achats effectués pendant la période sélectionnée.
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -912,14 +965,19 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                       />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <input
-                        type="number"
-                        value={row.stockEntry}
-                        onChange={(e) => updateProductRow(index, 'stockEntry', e.target.value)}
-                        className="w-24 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
-                        min="0"
-                        placeholder="0"
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={row.stockEntry}
+                          readOnly
+                          className="w-24 px-2 py-1 border border-blue-300 bg-blue-50 rounded text-sm text-blue-900 font-medium cursor-not-allowed"
+                          placeholder="0"
+                          title="Calculé automatiquement depuis les achats de la période"
+                        />
+                        <div className="absolute -top-1 -right-1">
+                          <Calculator className="w-3 h-3 text-blue-600" />
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <input
