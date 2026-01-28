@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Sale, Product, StockSalesCalculation } from '../types';
-import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, Edit, AlertTriangle, CheckCircle, XCircle, Calculator } from 'lucide-react';
+import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, Edit, AlertTriangle, CheckCircle, XCircle, Calculator, Download } from 'lucide-react';
 import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale, getStockSalesCalculations, addStockSalesCalculation, deleteStockSalesCalculation, getPurchases, getMultiPurchases } from '../utils/dataService';
 import { generateInvoicePDF, autoGenerateSimpleInvoice } from '../utils/pdfService';
 import { emecefService } from '../utils/emecefService';
@@ -600,6 +600,75 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     }
   };
 
+  const exportStockCalculationsToTxt = () => {
+    if (stockCalculations.length === 0) {
+      alert('Aucun calcul à exporter');
+      return;
+    }
+
+    let content = '='.repeat(80) + '\n';
+    content += 'HISTORIQUE DES CALCULS DE VENTES PAR STOCK\n';
+    content += '='.repeat(80) + '\n\n';
+    content += `Date d'exportation: ${new Date().toLocaleString('fr-FR')}\n`;
+    content += `Nombre total de calculs: ${stockCalculations.length}\n\n`;
+
+    stockCalculations.forEach((calc, index) => {
+      content += '-'.repeat(80) + '\n';
+      content += `CALCUL #${index + 1}\n`;
+      content += '-'.repeat(80) + '\n';
+      content += `Date du calcul: ${new Date(calc.date).toLocaleString('fr-FR')}\n`;
+      content += `Période: Du ${new Date(calc.periodStart).toLocaleDateString('fr-FR')} au ${new Date(calc.periodEnd).toLocaleDateString('fr-FR')}\n`;
+      content += `Produit: ${calc.productName}\n\n`;
+      content += `Stock Initial: ${calc.initialStock}\n`;
+      content += `Stock Final: ${calc.finalStock}\n`;
+      content += `Entrée en Stock: ${calc.stockEntry}\n`;
+      content += `Endommagés: ${calc.damaged}\n`;
+      content += `Cassés: ${calc.broken}\n`;
+      content += `Fuyants: ${calc.leaking}\n`;
+      content += `Total Pertes: ${calc.damaged + calc.broken + calc.leaking}\n\n`;
+      content += `>>> QUANTITÉ VENDUE: ${calc.quantitySold} <<<\n\n`;
+      if (calc.notes) {
+        content += `Notes: ${calc.notes}\n\n`;
+      }
+    });
+
+    content += '='.repeat(80) + '\n';
+    content += 'FIN DU RAPPORT\n';
+    content += '='.repeat(80) + '\n';
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `calculs-ventes-stock-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteAllStockCalcs = async () => {
+    if (stockCalculations.length === 0) {
+      alert('Aucun calcul à supprimer');
+      return;
+    }
+
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer TOUS les calculs (${stockCalculations.length}) ? Cette action est irréversible.`)) {
+      return;
+    }
+
+    try {
+      for (const calc of stockCalculations) {
+        await deleteStockSalesCalculation(calc.id);
+      }
+      alert('Tous les calculs ont été supprimés avec succès !');
+      loadData();
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      alert('Erreur lors de la suppression des calculs');
+    }
+  };
+
   const filteredSales = sales.filter(sale =>
     sale.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sale.produitNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1072,8 +1141,26 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
 
       {activeTab === 'stock-calc' && !showStockCalcForm && (
         <div className="bg-white rounded-xl shadow-lg mb-8">
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-6 border-b border-gray-200 flex justify-between items-center">
             <h3 className="text-lg font-semibold text-gray-900">Historique des Calculs</h3>
+            <div className="flex space-x-3">
+              <button
+                onClick={exportStockCalculationsToTxt}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                disabled={stockCalculations.length === 0}
+              >
+                <Download className="h-4 w-4" />
+                <span>Exporter .txt</span>
+              </button>
+              <button
+                onClick={handleDeleteAllStockCalcs}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                disabled={stockCalculations.length === 0}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Supprimer Tout</span>
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
