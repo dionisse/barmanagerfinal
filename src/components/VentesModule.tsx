@@ -344,6 +344,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
       alert('Vente finalisée avec succès !');
       resetSale();
       loadData();
+
+      window.dispatchEvent(new CustomEvent('stockUpdated'));
     } catch (error) {
       console.error('Erreur lors de la finalisation:', error);
       alert('Erreur lors de la finalisation de la vente');
@@ -425,6 +427,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
       setShowEditModal(false);
       setEditingSale(null);
       loadData();
+
+      window.dispatchEvent(new CustomEvent('stockUpdated'));
     } catch (error) {
       console.error('Erreur lors de la modification:', error);
       alert('Erreur lors de la modification de la vente');
@@ -451,6 +455,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
 
       alert('Vente supprimée avec succès !');
       loadData();
+
+      window.dispatchEvent(new CustomEvent('stockUpdated'));
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       alert('Erreur lors de la suppression de la vente');

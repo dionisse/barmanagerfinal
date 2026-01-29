@@ -50,10 +50,18 @@ const StocksModule: React.FC<StocksModuleProps> = ({ user }) => {
       loadData();
     };
 
+    // Écouter l'événement de mise à jour du stock (achats/ventes)
+    const handleStockUpdated = () => {
+      console.log('Stock mis à jour, rechargement du module Stocks...');
+      loadData();
+    };
+
     window.addEventListener('dataRestored', handleDataRestored);
+    window.addEventListener('stockUpdated', handleStockUpdated);
 
     return () => {
       window.removeEventListener('dataRestored', handleDataRestored);
+      window.removeEventListener('stockUpdated', handleStockUpdated);
     };
   }, []);
 

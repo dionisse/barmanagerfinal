@@ -181,6 +181,8 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
       alert('Achat multiple finalisé avec succès !');
       resetPurchase();
       loadData();
+
+      window.dispatchEvent(new CustomEvent('stockUpdated'));
     } catch (error) {
       console.error('Erreur lors de la finalisation:', error);
       alert('Erreur lors de la finalisation de l\'achat');
@@ -248,6 +250,8 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
       await deleteMultiPurchase(purchaseId);
       loadData();
       alert('Commande supprimée avec succès !');
+
+      window.dispatchEvent(new CustomEvent('stockUpdated'));
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       alert('Erreur lors de la suppression de la commande');

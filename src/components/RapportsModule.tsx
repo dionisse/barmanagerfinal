@@ -28,6 +28,18 @@ const RapportsModule: React.FC<RapportsModuleProps> = ({ user }) => {
 
   useEffect(() => {
     loadReportData();
+
+    // Écouter l'événement de mise à jour du stock (achats/ventes)
+    const handleStockUpdated = () => {
+      console.log('Stock mis à jour, rechargement des rapports...');
+      loadReportData();
+    };
+
+    window.addEventListener('stockUpdated', handleStockUpdated);
+
+    return () => {
+      window.removeEventListener('stockUpdated', handleStockUpdated);
+    };
   }, [dateRange]);
 
   const loadReportData = async () => {

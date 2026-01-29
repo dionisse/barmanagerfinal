@@ -36,10 +36,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       loadStats();
     };
 
+    // Écouter l'événement de mise à jour du stock (achats/ventes)
+    const handleStockUpdated = () => {
+      console.log('Stock mis à jour, rechargement du Dashboard...');
+      loadStats();
+    };
+
     window.addEventListener('dataRestored', handleDataRestored);
+    window.addEventListener('stockUpdated', handleStockUpdated);
 
     return () => {
       window.removeEventListener('dataRestored', handleDataRestored);
+      window.removeEventListener('stockUpdated', handleStockUpdated);
     };
   }, []);
 
