@@ -159,7 +159,9 @@ initializeData().catch(console.error);
 
 // Products
 export const getProducts = async (): Promise<Product[]> => {
-  return await indexedDBService.getAllData<Product>('products');
+  const products = await indexedDBService.getAllData<Product>('products');
+  console.log('[DATA SERVICE] getProducts retourne:', products.length, 'produits');
+  return products;
 };
 
 export const addProduct = async (product: Product): Promise<void> => {
@@ -170,8 +172,14 @@ export const addProduct = async (product: Product): Promise<void> => {
 };
 
 export const updateProduct = async (updatedProduct: Product): Promise<void> => {
+  console.log('[DATA SERVICE] updateProduct appelé:', {
+    id: updatedProduct.id,
+    nom: updatedProduct.nom,
+    stockActuel: updatedProduct.stockActuel
+  });
   await indexedDBService.saveData('products', updatedProduct);
-  
+  console.log('[DATA SERVICE] Produit sauvegardé dans IndexedDB');
+
   // Trigger sync after data change
   triggerSync();
 };
@@ -750,10 +758,11 @@ const triggerSync = (): void => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('gobex_current_user') || '{}');
     if (currentUser.id && currentUser.type !== 'Propriétaire') {
-      // Déclencher la synchronisation après un court délai pour éviter les conflits
+      // Upload uniquement après modification locale (sans download pour éviter d'écraser les données)
       setTimeout(() => {
-        enhancedSyncService.manualSync(currentUser.id).catch(error => {
-          console.warn('Erreur lors de la synchronisation automatique:', error);
+        console.log('[DATA SERVICE] Déclenchement upload vers cloud...');
+        enhancedSyncService.uploadOnly(currentUser.id).catch(error => {
+          console.warn('Erreur lors de l\'upload automatique:', error);
         });
       }, 1000);
     }

@@ -66,10 +66,15 @@ const StocksModule: React.FC<StocksModuleProps> = ({ user }) => {
   }, []);
 
   const loadData = async () => {
+    console.log('[STOCKS] Début du chargement des données...');
     setIsLoading(true);
     try {
       const productsData = await getProducts();
       const inventoryData = await getInventoryRecords();
+      console.log('[STOCKS] Produits chargés:', productsData.length, 'produits');
+      productsData.forEach(p => {
+        console.log(`[STOCKS] - ${p.nom}: ${p.stockActuel} unités`);
+      });
       setProducts(productsData);
       setInventoryRecords(inventoryData);
     } catch (error) {

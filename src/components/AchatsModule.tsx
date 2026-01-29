@@ -73,8 +73,10 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
   }, [formData.prixCasier, formData.unitesParCasier]);
 
   const loadData = async () => {
+    console.log('[ACHATS] Chargement des données...');
     const purchasesData = await getMultiPurchases();
     const productsData = await getProducts();
+    console.log('[ACHATS] Produits chargés:', productsData.length);
     setPurchases(purchasesData);
     setProducts(productsData);
   };
@@ -169,19 +171,28 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
       for (const item of cart) {
         const product = products.find(p => p.id === item.produitId);
         if (product) {
+          console.log(`[ACHAT] Mise à jour stock pour ${product.nom}:`, {
+            stockAvant: product.stockActuel,
+            quantiteAjoutee: item.quantite,
+            stockApres: product.stockActuel + item.quantite
+          });
           const updatedProduct = {
             ...product,
             stockActuel: product.stockActuel + item.quantite, // quantite is already in units
             prixAchat: item.prixUnitaire
           };
           await updateProduct(updatedProduct);
+          console.log(`[ACHAT] Stock mis à jour avec succès pour ${product.nom}`);
+        } else {
+          console.warn(`[ACHAT] Produit non trouvé: ${item.produitId}`);
         }
       }
 
       alert('Achat multiple finalisé avec succès !');
       resetPurchase();
-      loadData();
+      await loadData();
 
+      console.log('[ACHATS] Déclenchement de l\'événement stockUpdated');
       window.dispatchEvent(new CustomEvent('stockUpdated'));
     } catch (error) {
       console.error('Erreur lors de la finalisation:', error);

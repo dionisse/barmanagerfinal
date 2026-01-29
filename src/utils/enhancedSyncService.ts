@@ -73,9 +73,54 @@ export class EnhancedSyncService {
         timestamp: new Date().toISOString()
       };
     }
-    
+
     this.currentUserId = userId;
     return await this.performSync(true);
+  }
+
+  // Upload uniquement (sans download) - utilisé après modifications locales
+  async uploadOnly(userId: string): Promise<SyncResult> {
+    if (!userId) {
+      return {
+        success: false,
+        message: 'ID utilisateur invalide',
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    this.currentUserId = userId;
+
+    if (!this.isOnline) {
+      console.log('[SYNC] Hors ligne - upload reporté');
+      return {
+        success: false,
+        message: 'Hors ligne - upload reporté',
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    try {
+      console.log('[SYNC] Upload seulement vers le cloud...');
+      const uploadResult = await this.uploadLocalData();
+
+      if (uploadResult.success) {
+        await indexedDBService.saveSyncMetadata({
+          lastSync: new Date().toISOString(),
+          userId: this.currentUserId,
+          status: 'success'
+        });
+        console.log('[SYNC] Upload réussi');
+      }
+
+      return uploadResult;
+    } catch (error) {
+      console.error('[SYNC] Erreur lors de l\'upload:', error);
+      return {
+        success: false,
+        message: `Erreur: ${error.message}`,
+        timestamp: new Date().toISOString()
+      };
+    }
   }
 
   // Effectuer la synchronisation
