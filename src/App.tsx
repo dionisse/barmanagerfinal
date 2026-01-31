@@ -58,6 +58,7 @@ function App() {
       storageService.setUserLotId(null);
       await indexedDBService.setUserLotId(null);
       enhancedSyncService.startAutoSync(ownerUserId);
+      await enhancedSyncService.forceDownloadFromCloud(ownerUserId);
       setIsLoading(false);
       return;
     }
@@ -91,6 +92,9 @@ function App() {
 
         // Démarrer la synchronisation automatique avec user_lot_id pour isolation
         enhancedSyncService.startAutoSync(userLotId);
+
+        // Forcer le téléchargement des données depuis le cloud pour assurer la synchronisation
+        await enhancedSyncService.forceDownloadFromCloud(userLotId);
       } else {
         // Session invalide, déconnecter l'utilisateur
         handleLogout();

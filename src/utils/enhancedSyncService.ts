@@ -327,16 +327,19 @@ export class EnhancedSyncService {
           const cloudLastSync = result.lastSync ? new Date(result.lastSync) : new Date(0);
           
           // Seulement restaurer si les données cloud sont plus récentes
+          this.logDebug(`Comparaison timestamps - Local: ${localLastSync.toISOString()}, Cloud: ${cloudLastSync.toISOString()}`);
+
           if (cloudLastSync > localLastSync) {
+            this.logDebug(`📥 Les données cloud sont plus récentes - Restauration...`);
             await indexedDBService.restoreAllData(result.data);
-            this.logDebug(`Download réussi - Données plus récentes restaurées`);
+            this.logDebug(`✅ Download réussi - Données plus récentes restaurées`);
             return {
               success: true,
               message: 'Données restaurées depuis le cloud',
               timestamp: new Date().toISOString()
             };
           } else {
-            this.logDebug(`Download réussi - Données locales déjà à jour`);
+            this.logDebug(`✓ Download réussi - Données locales déjà à jour (pas de restauration nécessaire)`);
             return {
               success: true,
               message: 'Données locales à jour',
@@ -399,7 +402,7 @@ export class EnhancedSyncService {
         timestamp: new Date().toISOString()
       };
     }
-    
+
     try {
       if (!navigator.onLine) {
         this.logDebug(`Appareil hors ligne - téléchargement forcé impossible`);
@@ -409,35 +412,56 @@ export class EnhancedSyncService {
           timestamp: new Date().toISOString()
         };
       }
-      
-      this.logDebug(`Forçage du téléchargement des données pour l'utilisateur ${userId}`);
-      const result = await supabaseService.getUserData(userId);
-      
-      if (result.success && result.data) {
-        await indexedDBService.restoreAllData(result.data);
-        await indexedDBService.saveSyncMetadata({
-          lastSync: new Date().toISOString(),
-          userId: userId,
-          status: 'success'
-        });
-        
-        this.logDebug(`Téléchargement forcé réussi`);
-        
+
+      this.logDebug(`🔄 FORÇAGE du téléchargement des données pour l'utilisateur ${userId} (ÉCRASE TOUTES LES DONNÉES LOCALES)`);
+
+      // Vérifier la connexion Supabase
+      const isConnected = await supabaseService.testConnection();
+      if (!isConnected) {
+        this.logDebug(`❌ Impossible de se connecter à Supabase`);
         return {
-          success: true,
-          message: 'Données initiales récupérées depuis le cloud',
+          success: false,
+          message: 'Impossible de se connecter à Supabase',
           timestamp: new Date().toISOString()
         };
       }
-      
-      this.logDebug(`Téléchargement forcé - aucune donnée trouvée`);
+
+      // Récupérer les données du cloud
+      const result = await supabaseService.getUserData(userId);
+
+      if (result.success && result.data) {
+        // IMPORTANT: Effacer TOUTES les données locales avant de restaurer
+        this.logDebug(`🗑️  Effacement de toutes les données locales...`);
+        await indexedDBService.clearAllData();
+
+        // Restaurer les données du cloud (FORCE, sans vérification de timestamp)
+        this.logDebug(`📥 Restauration des données du cloud...`);
+        await indexedDBService.restoreAllData(result.data);
+
+        // Mettre à jour les métadonnées de synchronisation
+        await indexedDBService.saveSyncMetadata({
+          lastSync: result.lastSync || new Date().toISOString(),
+          userId: userId,
+          status: 'success'
+        });
+
+        this.logDebug(`✅ Téléchargement forcé réussi - Données cloud restaurées`);
+
+        return {
+          success: true,
+          message: 'Données récupérées depuis le cloud et restaurées',
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      this.logDebug(`⚠️  Téléchargement forcé - aucune donnée trouvée dans le cloud`);
       return {
         success: true,
-        message: 'Aucune donnée cloud trouvée - utilisation des données locales',
+        message: 'Aucune donnée cloud trouvée',
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      this.logDebug(`Erreur lors du téléchargement forcé:`, error.message);
+      this.logDebug(`❌ Erreur lors du téléchargement forcé:`, error.message);
       return {
         success: false,
         message: `Erreur lors de la récupération: ${error.message}`,
