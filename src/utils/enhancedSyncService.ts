@@ -413,7 +413,7 @@ export class EnhancedSyncService {
         };
       }
 
-      this.logDebug(`🔄 FORÇAGE du téléchargement des données pour l'utilisateur ${userId} (ÉCRASE TOUTES LES DONNÉES LOCALES)`);
+      this.logDebug(`🔄 Synchronisation intelligente pour l'utilisateur ${userId}`);
 
       // Vérifier la connexion Supabase
       const isConnected = await supabaseService.testConnection();
@@ -426,45 +426,141 @@ export class EnhancedSyncService {
         };
       }
 
+      // Récupérer les données locales avant de tout effacer
+      const localData = await indexedDBService.collectAllData();
+      const localMetadata = await indexedDBService.getSyncMetadata();
+
       // Récupérer les données du cloud
       const result = await supabaseService.getUserData(userId);
 
       if (result.success && result.data) {
-        // IMPORTANT: Effacer TOUTES les données locales avant de restaurer
-        this.logDebug(`🗑️  Effacement de toutes les données locales...`);
-        await indexedDBService.clearAllData();
+        const cloudLastSync = result.lastSync ? new Date(result.lastSync) : new Date(0);
+        const localLastSync = localMetadata?.lastSync ? new Date(localMetadata.lastSync) : new Date(0);
 
-        // Restaurer les données du cloud (FORCE, sans vérification de timestamp)
-        this.logDebug(`📥 Restauration des données du cloud...`);
-        await indexedDBService.restoreAllData(result.data);
+        this.logDebug(`📊 Comparaison - Local: ${localLastSync.toISOString()}, Cloud: ${cloudLastSync.toISOString()}`);
 
-        // Mettre à jour les métadonnées de synchronisation
-        await indexedDBService.saveSyncMetadata({
-          lastSync: result.lastSync || new Date().toISOString(),
-          userId: userId,
-          status: 'success'
-        });
+        // Si les données cloud sont plus récentes, les restaurer
+        if (cloudLastSync > localLastSync) {
+          this.logDebug(`📥 Données cloud plus récentes - Restauration complète`);
+          await indexedDBService.clearAllData();
+          await indexedDBService.restoreAllData(result.data);
 
-        this.logDebug(`✅ Téléchargement forcé réussi - Données cloud restaurées`);
+          await indexedDBService.saveSyncMetadata({
+            lastSync: result.lastSync || new Date().toISOString(),
+            userId: userId,
+            status: 'success'
+          });
 
-        return {
-          success: true,
-          message: 'Données récupérées depuis le cloud et restaurées',
-          timestamp: new Date().toISOString()
-        };
+          return {
+            success: true,
+            message: 'Données cloud restaurées (plus récentes)',
+            timestamp: new Date().toISOString()
+          };
+        } else {
+          // Données locales plus récentes - fusionner intelligemment
+          this.logDebug(`💾 Données locales plus récentes - Conservation et fusion`);
+
+          // Fusionner en gardant les données les plus complètes
+          const mergedData = this.mergeData(localData, result.data);
+
+          // Restaurer les données fusionnées
+          await indexedDBService.clearAllData();
+          await indexedDBService.restoreAllData(mergedData);
+
+          // Synchroniser vers le cloud immédiatement
+          await this.uploadCloudData();
+
+          return {
+            success: true,
+            message: 'Données locales conservées et synchronisées',
+            timestamp: new Date().toISOString()
+          };
+        }
       }
 
-      this.logDebug(`⚠️  Téléchargement forcé - aucune donnée trouvée dans le cloud`);
+      // Pas de données cloud - conserver les données locales et les synchroniser
+      this.logDebug(`⚠️  Aucune donnée cloud - Conservation des données locales`);
+
+      // Synchroniser les données locales vers le cloud
+      await this.uploadCloudData();
+
       return {
         success: true,
-        message: 'Aucune donnée cloud trouvée',
+        message: 'Données locales conservées et synchronisées vers le cloud',
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      this.logDebug(`❌ Erreur lors du téléchargement forcé:`, error.message);
+      this.logDebug(`❌ Erreur lors de la synchronisation:`, error.message);
       return {
         success: false,
-        message: `Erreur lors de la récupération: ${error.message}`,
+        message: `Erreur lors de la synchronisation: ${error.message}`,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  // Fusionner les données locales et cloud en gardant les plus complètes
+  private mergeData(localData: any, cloudData: any): any {
+    const merged = { ...cloudData };
+
+    // Pour chaque clé de données, garder celle qui a le plus d'éléments
+    const keys = ['products', 'sales', 'purchases', 'multiPurchases', 'packaging',
+                  'packagingPurchases', 'expenses', 'inventoryRecords', 'userLots', 'licenses', 'users'];
+
+    for (const key of keys) {
+      const localArray = Array.isArray(localData[key]) ? localData[key] : [];
+      const cloudArray = Array.isArray(cloudData[key]) ? cloudData[key] : [];
+
+      // Garder le tableau le plus long (plus de données)
+      if (localArray.length > cloudArray.length) {
+        this.logDebug(`📦 ${key}: Conservation des données locales (${localArray.length} vs ${cloudArray.length})`);
+        merged[key] = localArray;
+      } else if (cloudArray.length > 0) {
+        this.logDebug(`☁️  ${key}: Utilisation des données cloud (${cloudArray.length} vs ${localArray.length})`);
+        merged[key] = cloudArray;
+      } else {
+        merged[key] = localArray;
+      }
+    }
+
+    // Pour les settings, fusionner les objets
+    merged.settings = {
+      ...(cloudData.settings || {}),
+      ...(localData.settings || {})
+    };
+
+    return merged;
+  }
+
+  // Méthode pour upload avec gestion d'erreurs améliorée
+  private async uploadCloudData(): Promise<SyncResult> {
+    try {
+      const localData = await indexedDBService.collectAllData();
+
+      if (!this.currentUserId || !this.isValidUserId(this.currentUserId)) {
+        throw new Error(`ID utilisateur invalide: ${this.currentUserId}`);
+      }
+
+      const result = await supabaseService.saveUserData(this.currentUserId, localData);
+
+      await indexedDBService.saveSyncMetadata({
+        lastSync: new Date().toISOString(),
+        userId: this.currentUserId,
+        status: 'success'
+      });
+
+      this.logDebug(`✅ Upload vers le cloud réussi`);
+
+      return {
+        success: result.success,
+        message: result.success ? 'Données sauvées dans le cloud' : result.message,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      this.logDebug(`❌ Erreur lors de l'upload vers le cloud:`, error.message);
+      return {
+        success: false,
+        message: `Erreur upload: ${error.message}`,
         timestamp: new Date().toISOString()
       };
     }
