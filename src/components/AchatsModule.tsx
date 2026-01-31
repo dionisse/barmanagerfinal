@@ -100,7 +100,10 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
 
   const addToCart = () => {
     const selectedProduct = products.find(p => p.id === formData.produitId);
-    if (!selectedProduct) return;
+    if (!selectedProduct) {
+      alert('Veuillez sélectionner un produit');
+      return;
+    }
 
     const nombreCasiers = parseInt(formData.nombreCasiers);
     const unitesParCasier = parseInt(formData.unitesParCasier);
@@ -108,18 +111,33 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
     const prixUnitaire = parseFloat(formData.prixUnitaire);
     const totalPrice = totalUnits * prixUnitaire;
 
-    if (!nombreCasiers || !prixUnitaire) {
-      alert('Veuillez remplir tous les champs');
+    if (!nombreCasiers || !prixUnitaire || isNaN(nombreCasiers) || isNaN(prixUnitaire)) {
+      alert('Veuillez remplir tous les champs correctement');
       return;
     }
 
+    if (nombreCasiers <= 0 || prixUnitaire <= 0) {
+      alert('Les quantités et prix doivent être supérieurs à 0');
+      return;
+    }
+
+    console.log('[ACHAT] Ajout au panier:', {
+      produit: selectedProduct.nom,
+      nombreCasiers,
+      unitesParCasier,
+      totalUnits,
+      prixUnitaire,
+      totalPrice
+    });
+
     const existingIndex = cart.findIndex(item => item.produitId === formData.produitId);
-    
+
     if (existingIndex >= 0) {
       const updatedCart = [...cart];
       updatedCart[existingIndex].quantite += totalUnits;
       updatedCart[existingIndex].total = updatedCart[existingIndex].quantite * prixUnitaire;
       setCart(updatedCart);
+      console.log('[ACHAT] Produit déjà dans le panier, quantité mise à jour');
     } else {
       const newItem: PurchaseItem = {
         produitId: formData.produitId,
@@ -129,12 +147,13 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
         total: totalPrice
       };
       setCart([...cart, newItem]);
+      console.log('[ACHAT] Nouveau produit ajouté au panier');
     }
 
-    setFormData({ 
-      ...formData, 
-      produitId: '', 
-      nombreCasiers: '', 
+    setFormData({
+      ...formData,
+      produitId: '',
+      nombreCasiers: '',
       prixUnitaire: '',
       prixCasier: ''
     });
@@ -156,6 +175,9 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
     }
 
     try {
+      console.log('[ACHAT] Début de la finalisation de l\'achat multiple');
+      console.log('[ACHAT] Panier:', cart);
+
       const newMultiPurchase: MultiPurchase = {
         id: Date.now().toString(),
         dateAchat: formData.dateAchat,
@@ -166,37 +188,54 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
       };
 
       await addMultiPurchase(newMultiPurchase);
+      console.log('[ACHAT] Commande enregistrée avec succès');
+
+      // Recharger les produits pour avoir les données les plus récentes
+      const freshProducts = await getProducts();
+      console.log('[ACHAT] Produits rechargés:', freshProducts.length);
 
       // Update product stocks and prices (stock is always in units)
+      let updateCount = 0;
       for (const item of cart) {
-        const product = products.find(p => p.id === item.produitId);
+        const product = freshProducts.find(p => p.id === item.produitId);
         if (product) {
+          const nouveauStock = product.stockActuel + item.quantite;
           console.log(`[ACHAT] Mise à jour stock pour ${product.nom}:`, {
+            produitId: product.id,
             stockAvant: product.stockActuel,
             quantiteAjoutee: item.quantite,
-            stockApres: product.stockActuel + item.quantite
+            stockApres: nouveauStock,
+            prixAchatAvant: product.prixAchat,
+            prixAchatNouveau: item.prixUnitaire
           });
+
           const updatedProduct = {
             ...product,
-            stockActuel: product.stockActuel + item.quantite, // quantite is already in units
+            stockActuel: nouveauStock,
             prixAchat: item.prixUnitaire
           };
+
           await updateProduct(updatedProduct);
-          console.log(`[ACHAT] Stock mis à jour avec succès pour ${product.nom}`);
+          updateCount++;
+          console.log(`[ACHAT] ✓ Stock mis à jour avec succès pour ${product.nom}, nouveau stock: ${nouveauStock} unités`);
         } else {
-          console.warn(`[ACHAT] Produit non trouvé: ${item.produitId}`);
+          console.error(`[ACHAT] ✗ Produit non trouvé dans la base: ${item.produitId} (${item.produitNom})`);
         }
       }
 
-      alert('Achat multiple finalisé avec succès !');
+      console.log(`[ACHAT] ${updateCount}/${cart.length} produits mis à jour avec succès`);
+
+      alert(`Achat multiple finalisé avec succès !\n${updateCount} produit(s) ajouté(s) au stock.`);
       resetPurchase();
+
+      // Recharger les données pour rafraîchir l'interface
       await loadData();
 
       console.log('[ACHATS] Déclenchement de l\'événement stockUpdated');
       window.dispatchEvent(new CustomEvent('stockUpdated'));
     } catch (error) {
-      console.error('Erreur lors de la finalisation:', error);
-      alert('Erreur lors de la finalisation de l\'achat');
+      console.error('[ACHAT] Erreur lors de la finalisation:', error);
+      alert('Erreur lors de la finalisation de l\'achat: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
     }
   };
 
@@ -253,18 +292,26 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
   };
 
   const handleDeletePurchase = async (purchaseId: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette commande ?')) {
+    const purchase = purchases.find(p => p.id === purchaseId);
+    if (!purchase) {
+      alert('Commande introuvable');
+      return;
+    }
+
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer cette commande ?\n\nATTENTION: Le stock des produits ne sera PAS automatiquement diminué.\nSi vous avez déjà reçu la marchandise, vous devrez ajuster manuellement le stock.`)) {
       return;
     }
 
     try {
+      console.log('[ACHAT] Suppression de la commande:', purchaseId);
       await deleteMultiPurchase(purchaseId);
-      loadData();
+
+      await loadData();
       alert('Commande supprimée avec succès !');
 
       window.dispatchEvent(new CustomEvent('stockUpdated'));
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
+      console.error('[ACHAT] Erreur lors de la suppression:', error);
       alert('Erreur lors de la suppression de la commande');
     }
   };
@@ -314,6 +361,7 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestion des Achats</h1>
           <p className="text-gray-600 mt-2">Gérez vos approvisionnements par casiers avec conversion automatique en unités</p>
+          <p className="text-sm text-green-600 mt-1 font-medium">✓ Le stock est automatiquement mis à jour lors de la finalisation</p>
         </div>
         <div className="flex space-x-3">
           <button
@@ -412,7 +460,7 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
                       <option value="">Sélectionner un produit</option>
                       {products.map(product => (
                         <option key={product.id} value={product.id}>
-                          {product.nom} - {product.categorie}
+                          {product.nom} - Stock: {product.stockActuel} unités
                         </option>
                       ))}
                     </select>
@@ -520,7 +568,7 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
                           <div>
                             <span className="text-gray-600">Prix/Casier:</span>
                             <p className="font-semibold text-blue-800">
-                              {formData.prixCasier ? parseFloat(formData.prixCasier).toLocaleString() : 
+                              {formData.prixCasier ? parseFloat(formData.prixCasier).toLocaleString() :
                                 (parseFloat(formData.prixUnitaire) * parseInt(formData.unitesParCasier)).toLocaleString()} FCFA
                             </p>
                           </div>
@@ -530,6 +578,24 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
                           </div>
                         </>
                       )}
+                      {formData.produitId && (() => {
+                        const selectedProduct = products.find(p => p.id === formData.produitId);
+                        if (selectedProduct) {
+                          return (
+                            <>
+                              <div>
+                                <span className="text-gray-600">Stock Actuel:</span>
+                                <p className="font-semibold text-gray-800">{selectedProduct.stockActuel} unités</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Stock Après Achat:</span>
+                                <p className="font-semibold text-green-700">{selectedProduct.stockActuel + calculateTotalUnits()} unités</p>
+                              </div>
+                            </>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                 )}
@@ -654,13 +720,26 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
             </div>
 
             {/* Aide sur les casiers */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-6 text-white">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
               <h3 className="text-lg font-semibold mb-3">💡 Aide Casiers</h3>
               <div className="space-y-2 text-sm">
                 <p><strong>12 unités/casier:</strong> Bières, sodas standards</p>
                 <p><strong>20 unités/casier:</strong> Petites bouteilles</p>
                 <p><strong>24 unités/casier:</strong> Canettes, bouteilles 33cl</p>
                 <p><strong>Unité simple:</strong> Produits vendus à l'unité</p>
+              </div>
+            </div>
+
+            {/* Info mise à jour automatique du stock */}
+            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white">
+              <h3 className="text-lg font-semibold mb-3">✓ Mise à Jour Automatique</h3>
+              <div className="space-y-2 text-sm">
+                <p><strong>Stock en unités:</strong> Le stock est toujours géré en unités individuelles</p>
+                <p><strong>Achats en casiers:</strong> Les casiers sont automatiquement convertis en unités</p>
+                <p><strong>Exemple:</strong> 5 casiers × 12 unités = 60 unités ajoutées au stock</p>
+                <p className="mt-3 pt-3 border-t border-green-400">
+                  <strong>Important:</strong> Le stock sera mis à jour automatiquement après la finalisation
+                </p>
               </div>
             </div>
           </div>
