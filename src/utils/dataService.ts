@@ -789,3 +789,121 @@ export const deleteStockSalesCalculation = async (calculationId: string): Promis
   await indexedDBService.deleteData('stock_sales_calculations', calculationId);
   triggerSync();
 };
+
+// Fonction pour recalculer le stock à partir de tous les achats historiques
+export const recalculateStockFromPurchases = async (): Promise<{ success: boolean; message: string; details?: any }> => {
+  try {
+    console.log('[RECALCUL STOCK] Début du recalcul du stock à partir des achats...');
+
+    // Récupérer tous les produits et achats
+    const products = await getProducts();
+    const multiPurchases = await getMultiPurchases();
+
+    console.log('[RECALCUL STOCK] Données chargées:', {
+      produits: products.length,
+      achats: multiPurchases.length
+    });
+
+    if (multiPurchases.length === 0) {
+      return {
+        success: true,
+        message: 'Aucun achat trouvé. Le stock reste inchangé.',
+        details: { productsProcessed: 0, purchasesProcessed: 0 }
+      };
+    }
+
+    // Créer un map pour accumuler les quantités par produit
+    const stockAccumulator: { [productId: string]: { quantity: number; lastPrice: number } } = {};
+
+    // Parcourir tous les achats et accumuler les quantités
+    for (const purchase of multiPurchases) {
+      console.log(`[RECALCUL STOCK] Traitement commande ${purchase.numeroCommande}:`, {
+        date: purchase.dateAchat,
+        fournisseur: purchase.fournisseur,
+        items: purchase.items.length
+      });
+
+      for (const item of purchase.items) {
+        if (!stockAccumulator[item.produitId]) {
+          stockAccumulator[item.produitId] = {
+            quantity: 0,
+            lastPrice: item.prixUnitaire
+          };
+        }
+
+        stockAccumulator[item.produitId].quantity += item.quantite;
+        stockAccumulator[item.produitId].lastPrice = item.prixUnitaire;
+
+        console.log(`[RECALCUL STOCK]   - ${item.produitNom}: +${item.quantite} unités (total accumulé: ${stockAccumulator[item.produitId].quantity})`);
+      }
+    }
+
+    // Mettre à jour le stock de chaque produit
+    let updatedCount = 0;
+    let notFoundCount = 0;
+    const updateDetails: any[] = [];
+
+    for (const [productId, accumulation] of Object.entries(stockAccumulator)) {
+      const product = products.find(p => p.id === productId);
+
+      if (product) {
+        const oldStock = product.stockActuel;
+        const newStock = accumulation.quantity;
+
+        console.log(`[RECALCUL STOCK] Mise à jour ${product.nom}:`, {
+          stockAvant: oldStock,
+          stockCalculé: newStock,
+          différence: newStock - oldStock,
+          prixAchat: accumulation.lastPrice
+        });
+
+        const updatedProduct = {
+          ...product,
+          stockActuel: newStock,
+          prixAchat: accumulation.lastPrice
+        };
+
+        await updateProduct(updatedProduct);
+        updatedCount++;
+
+        updateDetails.push({
+          nom: product.nom,
+          stockAvant: oldStock,
+          stockApres: newStock,
+          différence: newStock - oldStock
+        });
+
+        console.log(`[RECALCUL STOCK] ✓ ${product.nom} mis à jour: ${oldStock} → ${newStock} unités`);
+      } else {
+        notFoundCount++;
+        console.warn(`[RECALCUL STOCK] ✗ Produit non trouvé: ${productId}`);
+      }
+    }
+
+    console.log('[RECALCUL STOCK] Recalcul terminé:', {
+      produitsTraités: updatedCount,
+      produitsNonTrouvés: notFoundCount,
+      achatsAnalysés: multiPurchases.length
+    });
+
+    // Déclencher l'événement de mise à jour du stock
+    window.dispatchEvent(new CustomEvent('stockUpdated'));
+
+    return {
+      success: true,
+      message: `Stock recalculé avec succès!\n${updatedCount} produit(s) mis à jour sur ${Object.keys(stockAccumulator).length} trouvé(s).\n${multiPurchases.length} achat(s) analysé(s).`,
+      details: {
+        productsUpdated: updatedCount,
+        productsNotFound: notFoundCount,
+        purchasesProcessed: multiPurchases.length,
+        updateDetails
+      }
+    };
+  } catch (error) {
+    console.error('[RECALCUL STOCK] Erreur lors du recalcul:', error);
+    return {
+      success: false,
+      message: `Erreur lors du recalcul du stock: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+    };
+  }
+};

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, MultiPurchase, PurchaseItem, Product } from '../types';
-import { Plus, Search, Filter, Edit, Trash2, Package, ShoppingBag, ShoppingCart, Calculator } from 'lucide-react';
-import { getMultiPurchases, getProducts, addMultiPurchase, updateProduct, addProduct, updateMultiPurchase, deleteMultiPurchase } from '../utils/dataService';
+import { Plus, Search, Filter, Edit, Trash2, Package, ShoppingBag, ShoppingCart, Calculator, RefreshCw } from 'lucide-react';
+import { getMultiPurchases, getProducts, addMultiPurchase, updateProduct, addProduct, updateMultiPurchase, deleteMultiPurchase, recalculateStockFromPurchases } from '../utils/dataService';
 
 interface AchatsModuleProps {
   user: User;
@@ -17,6 +17,7 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<PurchaseItem[]>([]);
   const [currentOrderNumber, setCurrentOrderNumber] = useState('');
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const [formData, setFormData] = useState({
     fournisseur: '',
     dateAchat: new Date().toISOString().split('T')[0],
@@ -342,10 +343,42 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
       ...prev,
       prixUnitaire,
       // Calculer le prix du casier si on modifie directement le prix unitaire
-      prixCasier: prev.unitesParCasier !== '1' ? 
-        (parseFloat(prixUnitaire) * parseInt(prev.unitesParCasier)).toFixed(2) : 
+      prixCasier: prev.unitesParCasier !== '1' ?
+        (parseFloat(prixUnitaire) * parseInt(prev.unitesParCasier)).toFixed(2) :
         ''
     }));
+  };
+
+  const handleRecalculateStock = async () => {
+    if (!window.confirm(
+      'Voulez-vous recalculer le stock à partir de tous les achats enregistrés?\n\n' +
+      'ATTENTION:\n' +
+      '• Cette opération va recalculer le stock de tous les produits\n' +
+      '• Le stock actuel sera remplacé par le total de tous les achats\n' +
+      '• Les ventes ne sont PAS prises en compte dans ce calcul\n\n' +
+      'Continuer?'
+    )) {
+      return;
+    }
+
+    setIsRecalculating(true);
+    try {
+      console.log('[ACHATS] Début du recalcul du stock...');
+      const result = await recalculateStockFromPurchases();
+
+      if (result.success) {
+        alert(result.message);
+        await loadData();
+        window.dispatchEvent(new CustomEvent('stockUpdated'));
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error('[ACHATS] Erreur lors du recalcul:', error);
+      alert('Erreur lors du recalcul du stock: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
+    } finally {
+      setIsRecalculating(false);
+    }
   };
 
   const filteredPurchases = purchases.filter(purchase =>
@@ -391,7 +424,7 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
             <ShoppingBag className="h-8 w-8 text-blue-600" />
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -401,7 +434,7 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
             <Package className="h-8 w-8 text-green-600" />
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -412,6 +445,35 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* Section de recalcul du stock */}
+      {purchases.length > 0 && (
+        <div className="mb-8 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-2">
+                <RefreshCw className="h-5 w-5 text-orange-600" />
+                <h3 className="text-lg font-semibold text-orange-900">Recalcul du Stock</h3>
+              </div>
+              <p className="text-sm text-orange-800 mb-2">
+                Utilisez cette fonction si le stock n'a pas été mis à jour automatiquement lors de vos anciens achats.
+              </p>
+              <p className="text-xs text-orange-700">
+                <strong>Note:</strong> Cette action recalculera le stock de tous les produits en se basant sur l'ensemble des achats enregistrés.
+                Les ventes ne sont pas prises en compte.
+              </p>
+            </div>
+            <button
+              onClick={handleRecalculateStock}
+              disabled={isRecalculating}
+              className="ml-4 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 whitespace-nowrap"
+            >
+              <RefreshCw className={`h-5 w-5 ${isRecalculating ? 'animate-spin' : ''}`} />
+              <span>{isRecalculating ? 'Recalcul...' : 'Recalculer'}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
