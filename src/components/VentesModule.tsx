@@ -471,7 +471,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     const broken = parseInt(stockCalcFormData.broken || '0');
     const leaking = parseInt(stockCalcFormData.leaking || '0');
 
-    return final - initial - (damaged + broken + leaking) + stockEntry;
+    // Nouvelle formule : Stock Initial + Entrée en Stock - (Endommagés + Cassés + Fuyants) - Stock Final = Quantité Vendue
+    return initial + stockEntry - (damaged + broken + leaking) - final;
   };
 
   const calculateRowQuantitySold = (row: ProductRow): number => {
@@ -482,7 +483,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     const broken = parseInt(row.broken || '0');
     const leaking = parseInt(row.leaking || '0');
 
-    return final - initial - (damaged + broken + leaking) + stockEntry;
+    // Nouvelle formule : Stock Initial + Entrée en Stock - (Endommagés + Cassés + Fuyants) - Stock Final = Quantité Vendue
+    return initial + stockEntry - (damaged + broken + leaking) - final;
   };
 
   const updateProductRow = (index: number, field: keyof ProductRow, value: string) => {
@@ -959,7 +961,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
           <div className="p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">Calcul de Ventes par Stock</h3>
             <p className="text-sm text-gray-600 mt-2">
-              Formule: Stock Final - Stock Initial - (Endommagés + Cassés + Fuyants) + Entrée en Stock = Quantité Vendue
+              Formule: Stock Initial + Entrée en Stock - (Endommagés + Cassés + Fuyants) - Stock Final = Quantité Vendue
             </p>
           </div>
 
