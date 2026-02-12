@@ -33,7 +33,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
   const [formData, setFormData] = useState({
     client: '',
     produitId: '',
-    quantite: '1'
+    quantite: '1',
+    dateVente: new Date().toISOString().split('T')[0]
   });
   const [editFormData, setEditFormData] = useState({
     client: '',
@@ -235,7 +236,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
 
     try {
       const clientName = formData.client || 'Client anonyme';
-      const dateVente = new Date().toISOString().split('T')[0];
+      const dateVente = formData.dateVente;
       let emecefCode: string | undefined;
 
       // Récupérer les paramètres pour vérifier si eMecef est activé
@@ -360,7 +361,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
 
     const invoiceData = {
       invoiceNumber: currentInvoiceNumber,
-      date: new Date().toLocaleDateString('fr-FR'),
+      date: new Date(formData.dateVente).toLocaleDateString('fr-FR'),
       client: formData.client || 'Client anonyme',
       items: cart,
       total: getTotalCart()
@@ -371,7 +372,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
 
   const resetSale = () => {
     setCart([]);
-    setFormData({ client: '', produitId: '', quantite: '1' });
+    setFormData({ client: '', produitId: '', quantite: '1', dateVente: new Date().toISOString().split('T')[0] });
     generateInvoiceNumber();
   };
 
@@ -751,7 +752,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                 <h3 className="text-lg font-semibold text-gray-900">Nouvelle Vente</h3>
               </div>
               <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Client
@@ -764,7 +765,19 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                       placeholder="Nom du client"
                     />
                   </div>
-                  
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date de vente
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.dateVente}
+                      onChange={(e) => setFormData({ ...formData, dateVente: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Produit
@@ -878,7 +891,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Date:</span>
-                  <span className="font-semibold">{new Date().toLocaleDateString('fr-FR')}</span>
+                  <span className="font-semibold">{new Date(formData.dateVente).toLocaleDateString('fr-FR')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Client:</span>
