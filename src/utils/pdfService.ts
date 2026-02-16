@@ -495,19 +495,7 @@ export const generateModernSaleInvoice = async (saleData: {
         2: { cellWidth: 40, halign: 'right' },
         3: { cellWidth: 40, halign: 'right' }
       },
-      margin: { left: margin, right: margin },
-      didDrawCell: (data: any) => {
-        if (data.section === 'body' && data.row.index === tableData.length - 1) {
-          doc.setDrawColor(226, 232, 240);
-          doc.setLineWidth(0.5);
-          doc.line(
-            data.cell.x,
-            data.cell.y + data.cell.height,
-            data.cell.x + data.table.width,
-            data.cell.y + data.cell.height
-          );
-        }
-      }
+      margin: { left: margin, right: margin }
     });
 
     const finalY = (doc as any).lastAutoTable.finalY + 15;
