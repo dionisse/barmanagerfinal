@@ -329,19 +329,22 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
         }
       }
 
-      // Générer automatiquement la facture PDF moderne A4
-      try {
-        await generateModernSaleInvoice({
-          invoiceNumber: currentInvoiceNumber,
-          client: clientName,
-          items: cart,
-          total: getTotalCart(),
-          emecefCode: emecefCode
-        });
-      } catch (pdfError) {
-        console.warn('Erreur lors de la génération automatique du PDF:', pdfError);
-        // Ne pas bloquer la vente si le PDF échoue
-      }
+      // Générer automatiquement la facture PDF moderne A4 en arrière-plan
+      generateModernSaleInvoice({
+        invoiceNumber: currentInvoiceNumber,
+        client: clientName,
+        items: cart,
+        total: getTotalCart(),
+        emecefCode: emecefCode
+      }).then(success => {
+        if (success) {
+          console.log('✅ Facture PDF générée avec succès');
+        } else {
+          console.error('❌ Échec de la génération de la facture PDF');
+        }
+      }).catch(error => {
+        console.error('❌ Erreur lors de la génération du PDF:', error);
+      });
 
       alert('Vente finalisée avec succès !');
       resetSale();

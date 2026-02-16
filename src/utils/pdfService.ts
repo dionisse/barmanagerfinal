@@ -376,7 +376,10 @@ export const generateModernSaleInvoice = async (saleData: {
   emecefCode?: string;
 }) => {
   try {
+    console.log('🔄 Début de génération de facture PDF...');
+
     const settings = await getSettings();
+    console.log('📋 Paramètres récupérés:', settings);
 
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -398,25 +401,26 @@ export const generateModernSaleInvoice = async (saleData: {
     doc.setTextColor(31, 41, 55);
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text(settings.entreprise.nom || 'GOBEX BAR', margin, 25);
+    const companyName = settings?.entreprise?.nom || 'GOBEX BAR';
+    doc.text(companyName, margin, 25);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(75, 85, 99);
     let yPos = 35;
-    if (settings.entreprise.adresse) {
+    if (settings?.entreprise?.adresse) {
       doc.text(settings.entreprise.adresse, margin, yPos);
       yPos += 5;
     }
-    if (settings.entreprise.telephone) {
+    if (settings?.entreprise?.telephone) {
       doc.text(`Tél: ${settings.entreprise.telephone}`, margin, yPos);
       yPos += 5;
     }
-    if (settings.entreprise.email) {
+    if (settings?.entreprise?.email) {
       doc.text(`Email: ${settings.entreprise.email}`, margin, yPos);
       yPos += 5;
     }
-    if (settings.fiscalite.nif) {
+    if (settings?.fiscalite?.nif) {
       doc.text(`NIF: ${settings.fiscalite.nif}`, margin, yPos);
     }
 
@@ -559,10 +563,13 @@ export const generateModernSaleInvoice = async (saleData: {
     doc.setLineWidth(0.3);
     doc.line(margin, bottomY - 3, pageWidth - margin, bottomY - 3);
 
-    doc.save(`Facture_${saleData.invoiceNumber}.pdf`);
+    const fileName = `Facture_${saleData.invoiceNumber}.pdf`;
+    doc.save(fileName);
+
+    console.log(`✅ Facture ${fileName} générée et téléchargée avec succès`);
     return true;
   } catch (error) {
-    console.error('Erreur lors de la génération de la facture:', error);
+    console.error('❌ Erreur lors de la génération de la facture:', error);
     return false;
   }
 };
