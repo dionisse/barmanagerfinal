@@ -757,14 +757,22 @@ export const resetForProduction = async (): Promise<void> => {
 const triggerSync = (): void => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('gobex_current_user') || '{}');
-    if (currentUser.id && currentUser.type !== 'Propriétaire') {
+
+    // Déterminer l'identifiant à utiliser pour la synchronisation
+    // Pour les utilisateurs non-propriétaires, utiliser userLotId
+    // Pour le propriétaire, utiliser son id
+    const syncId = currentUser.userLotId || currentUser.id;
+
+    if (syncId) {
       // Upload uniquement après modification locale (sans download pour éviter d'écraser les données)
       setTimeout(() => {
-        console.log('[DATA SERVICE] Déclenchement upload vers cloud...');
-        enhancedSyncService.uploadOnly(currentUser.id).catch(error => {
+        console.log('[DATA SERVICE] Déclenchement upload vers cloud pour:', syncId);
+        enhancedSyncService.uploadOnly(syncId).catch(error => {
           console.warn('Erreur lors de l\'upload automatique:', error);
         });
       }, 1000);
+    } else {
+      console.warn('[DATA SERVICE] Impossible de synchroniser - identifiant utilisateur manquant');
     }
   } catch (error) {
     console.warn('Erreur lors du déclenchement de la synchronisation:', error);
