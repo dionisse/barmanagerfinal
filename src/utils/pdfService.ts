@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { getSettings } from './dataService';
 
 interface InvoiceItem {
@@ -106,7 +106,7 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
   ]);
 
   // Generate table
-  doc.autoTable({
+  autoTable(doc, {
     head: tableHeaders,
     body: tableData,
     startY: 90,
@@ -472,7 +472,7 @@ export const generateModernSaleInvoice = async (saleData: {
       `${formatNumber(item.total)} FCFA`
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       head: tableHeaders,
       body: tableData,
       startY: currentY,
@@ -602,13 +602,13 @@ export const generateStockReportPDF = (products: any[]) => {
   ]);
 
   // Generate table
-  doc.autoTable({
+  autoTable(doc, {
     head: tableHeaders,
     body: tableData,
     startY: 65,
     theme: 'grid',
     headStyles: {
-      fillColor: [147, 51, 234], // Purple color
+      fillColor: [147, 51, 234],
       textColor: 255,
       fontStyle: 'bold'
     },
