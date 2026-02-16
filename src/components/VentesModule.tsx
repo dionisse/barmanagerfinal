@@ -30,6 +30,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<'pos' | 'stock-calc'>('pos');
   const [stockCalculations, setStockCalculations] = useState<StockSalesCalculation[]>([]);
   const [showStockCalcForm, setShowStockCalcForm] = useState(false);
+  const [viewMode, setViewMode] = useState<'detailed' | 'grouped'>('detailed');
   const [formData, setFormData] = useState({
     client: '',
     produitId: '',
@@ -685,6 +686,44 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
   );
 
   const totalVentes = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
+
+  interface GroupedInvoice {
+    numeroFacture: string;
+    dateVente: string;
+    client: string;
+    items: Sale[];
+    totalFacture: number;
+    emecefCode?: string;
+    emecefStatus?: string;
+  }
+
+  const groupSalesByInvoice = (): GroupedInvoice[] => {
+    const grouped = new Map<string, GroupedInvoice>();
+
+    filteredSales.forEach(sale => {
+      if (!grouped.has(sale.numeroFacture)) {
+        grouped.set(sale.numeroFacture, {
+          numeroFacture: sale.numeroFacture,
+          dateVente: sale.dateVente,
+          client: sale.client,
+          items: [],
+          totalFacture: 0,
+          emecefCode: sale.emecefCode,
+          emecefStatus: sale.emecefStatus
+        });
+      }
+
+      const invoice = grouped.get(sale.numeroFacture)!;
+      invoice.items.push(sale);
+      invoice.totalFacture += sale.total;
+    });
+
+    return Array.from(grouped.values()).sort((a, b) =>
+      new Date(b.dateVente).getTime() - new Date(a.dateVente).getTime()
+    );
+  };
+
+  const groupedInvoices = groupSalesByInvoice();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1390,109 +1429,221 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
+            <div className="flex items-center space-x-2 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('detailed')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'detailed'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Détaillé
+              </button>
+              <button
+                onClick={() => setViewMode('grouped')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'grouped'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Par Facture
+              </button>
+            </div>
             <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
               <Filter className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  N° Facture
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Produit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantité
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Prix Unit.
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  eMecef
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSales.map((sale) => (
-                <tr key={sale.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(sale.dateVente).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
-                      {sale.numeroFacture}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {sale.client}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {sale.produitNom}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {sale.quantite}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {sale.prixUnitaire.toLocaleString()} FCFA
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
-                    {sale.total.toLocaleString()} FCFA
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {sale.emecefCode ? (
-                      <div className="flex items-center space-x-1">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        <span className="text-green-600 text-xs">Généré</span>
-                      </div>
-                    ) : sale.emecefStatus === 'error' ? (
-                      <div className="flex items-center space-x-1">
-                        <XCircle className="h-4 w-4 text-red-500" />
-                        <span className="text-red-600 text-xs">Erreur</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-xs">N/A</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => handleEditSale(sale)}
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                        title="Modifier"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteSale(sale)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
+        {viewMode === 'detailed' ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    N° Facture
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Produit
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quantité
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Prix Unit.
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    eMecef
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredSales.map((sale) => (
+                  <tr key={sale.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(sale.dateVente).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
+                        {sale.numeroFacture}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {sale.client}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {sale.produitNom}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {sale.quantite}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {sale.prixUnitaire.toLocaleString()} FCFA
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                      {sale.total.toLocaleString()} FCFA
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {sale.emecefCode ? (
+                        <div className="flex items-center space-x-1">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-green-600 text-xs">Généré</span>
+                        </div>
+                      ) : sale.emecefStatus === 'error' ? (
+                        <div className="flex items-center space-x-1">
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          <span className="text-red-600 text-xs">Erreur</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">N/A</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditSale(sale)}
+                          className="text-blue-600 hover:text-blue-900 p-1 rounded"
+                          title="Modifier"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSale(sale)}
+                          className="text-red-600 hover:text-red-900 p-1 rounded"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    N° Facture
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Articles
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Facture
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    eMecef
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {groupedInvoices.map((invoice) => (
+                  <tr key={invoice.numeroFacture} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(invoice.dateVente).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
+                        {invoice.numeroFacture}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {invoice.client}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div className="space-y-1">
+                        {invoice.items.map((item, index) => (
+                          <div key={item.id} className="flex items-center space-x-2">
+                            <span className="text-gray-600">{index + 1}.</span>
+                            <span>{item.produitNom}</span>
+                            <span className="text-gray-500">×{item.quantite}</span>
+                            <span className="text-gray-400">-</span>
+                            <span className="text-green-600 font-medium">{item.total.toLocaleString()} FCFA</span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+                      {invoice.totalFacture.toLocaleString()} FCFA
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {invoice.emecefCode ? (
+                        <div className="flex items-center space-x-1">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-green-600 text-xs">Généré</span>
+                        </div>
+                      ) : invoice.emecefStatus === 'error' ? (
+                        <div className="flex items-center space-x-1">
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          <span className="text-red-600 text-xs">Erreur</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">N/A</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => setViewMode('detailed')}
+                        className="text-blue-600 hover:text-blue-900 p-1 rounded flex items-center space-x-1"
+                        title="Voir le détail"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span className="text-xs">Détail</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {filteredSales.length === 0 && (
           <div className="p-8 text-center">
