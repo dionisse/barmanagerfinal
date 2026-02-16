@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Sale, Product, StockSalesCalculation } from '../types';
 import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, Edit, AlertTriangle, CheckCircle, XCircle, Calculator, Download } from 'lucide-react';
 import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale, getStockSalesCalculations, addStockSalesCalculation, deleteStockSalesCalculation, getPurchases, getMultiPurchases } from '../utils/dataService';
-import { generateInvoicePDF, autoGenerateSimpleInvoice } from '../utils/pdfService';
+import { generateInvoicePDF, autoGenerateSimpleInvoice, generateModernSaleInvoice } from '../utils/pdfService';
 import { emecefService } from '../utils/emecefService';
 import { getSettings } from '../utils/dataService';
 
@@ -329,9 +329,9 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
         }
       }
 
-      // Générer automatiquement la facture PDF simple
+      // Générer automatiquement la facture PDF moderne A4
       try {
-        await autoGenerateSimpleInvoice({
+        await generateModernSaleInvoice({
           invoiceNumber: currentInvoiceNumber,
           client: clientName,
           items: cart,
@@ -354,21 +354,23 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     }
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     if (cart.length === 0) {
       alert('Aucun article à facturer');
       return;
     }
 
-    const invoiceData = {
-      invoiceNumber: currentInvoiceNumber,
-      date: new Date(formData.dateVente).toLocaleDateString('fr-FR'),
-      client: formData.client || 'Client anonyme',
-      items: cart,
-      total: getTotalCart()
-    };
-
-    generateInvoicePDF(invoiceData);
+    try {
+      await generateModernSaleInvoice({
+        invoiceNumber: currentInvoiceNumber,
+        client: formData.client || 'Client anonyme',
+        items: cart,
+        total: getTotalCart()
+      });
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      alert('Erreur lors de la génération de la facture');
+    }
   };
 
   const resetSale = () => {

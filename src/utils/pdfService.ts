@@ -368,6 +368,205 @@ export const autoGenerateSimpleInvoice = async (saleData: {
     return false;
   }
 };
+export const generateModernSaleInvoice = async (saleData: {
+  invoiceNumber: string;
+  client: string;
+  items: InvoiceItem[];
+  total: number;
+  emecefCode?: string;
+}) => {
+  try {
+    const settings = await getSettings();
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const formatNumber = (num: number): string => {
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    };
+
+    const pageWidth = 210;
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+
+    doc.setFillColor(245, 247, 250);
+    doc.rect(0, 0, pageWidth, 60, 'F');
+
+    doc.setTextColor(31, 41, 55);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text(settings.entreprise.nom || 'GOBEX BAR', margin, 25);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(75, 85, 99);
+    let yPos = 35;
+    if (settings.entreprise.adresse) {
+      doc.text(settings.entreprise.adresse, margin, yPos);
+      yPos += 5;
+    }
+    if (settings.entreprise.telephone) {
+      doc.text(`Tél: ${settings.entreprise.telephone}`, margin, yPos);
+      yPos += 5;
+    }
+    if (settings.entreprise.email) {
+      doc.text(`Email: ${settings.entreprise.email}`, margin, yPos);
+      yPos += 5;
+    }
+    if (settings.fiscalite.nif) {
+      doc.text(`NIF: ${settings.fiscalite.nif}`, margin, yPos);
+    }
+
+    doc.setFillColor(37, 99, 235);
+    doc.rect(pageWidth - margin - 60, 15, 60, 30, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FACTURE', pageWidth - margin - 30, 28, { align: 'center' });
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`N° ${saleData.invoiceNumber}`, pageWidth - margin - 30, 38, { align: 'center' });
+
+    let currentY = 75;
+
+    const now = new Date();
+    const date = now.toLocaleDateString('fr-FR');
+    const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    doc.setFontSize(11);
+    doc.setTextColor(31, 41, 55);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FACTURÉ À', margin, currentY);
+    currentY += 7;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(saleData.client, margin, currentY);
+    currentY += 8;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Date:', margin, currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${date} à ${time}`, margin + 15, currentY);
+    currentY += 15;
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.5);
+    doc.line(margin, currentY, pageWidth - margin, currentY);
+    currentY += 10;
+
+    const tableHeaders = [['Description', 'Quantité', 'Prix Unit.', 'Total']];
+    const tableData = saleData.items.map(item => [
+      item.produitNom,
+      item.quantite.toString(),
+      `${formatNumber(item.prixUnitaire)} FCFA`,
+      `${formatNumber(item.total)} FCFA`
+    ]);
+
+    doc.autoTable({
+      head: tableHeaders,
+      body: tableData,
+      startY: currentY,
+      theme: 'plain',
+      headStyles: {
+        fillColor: [249, 250, 251],
+        textColor: [75, 85, 99],
+        fontStyle: 'bold',
+        fontSize: 10,
+        cellPadding: 5
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [31, 41, 55],
+        cellPadding: 5
+      },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { cellWidth: 30, halign: 'center' },
+        2: { cellWidth: 40, halign: 'right' },
+        3: { cellWidth: 40, halign: 'right' }
+      },
+      margin: { left: margin, right: margin },
+      didDrawCell: (data: any) => {
+        if (data.section === 'body' && data.row.index === tableData.length - 1) {
+          doc.setDrawColor(226, 232, 240);
+          doc.setLineWidth(0.5);
+          doc.line(
+            data.cell.x,
+            data.cell.y + data.cell.height,
+            data.cell.x + data.table.width,
+            data.cell.y + data.cell.height
+          );
+        }
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+
+    const totalBoxX = pageWidth - margin - 70;
+    const totalBoxY = finalY;
+    const totalBoxWidth = 70;
+    const totalBoxHeight = 15;
+
+    doc.setFillColor(37, 99, 235);
+    doc.roundedRect(totalBoxX, totalBoxY, totalBoxWidth, totalBoxHeight, 3, 3, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL', totalBoxX + 5, totalBoxY + 7);
+    doc.text(`${formatNumber(saleData.total)} FCFA`, totalBoxX + totalBoxWidth - 5, totalBoxY + 10, { align: 'right' });
+
+    let footerY = finalY + 35;
+
+    if (saleData.emecefCode) {
+      doc.setFillColor(254, 243, 199);
+      doc.roundedRect(margin, footerY, contentWidth, 25, 3, 3, 'F');
+
+      doc.setTextColor(146, 64, 14);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CODE eMECEF (DGI BÉNIN)', margin + 5, footerY + 6);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(saleData.emecefCode, margin + 5, footerY + 13);
+
+      doc.setFontSize(7);
+      doc.setTextColor(120, 113, 108);
+      doc.text('Facture électronique conforme à la réglementation fiscale du Bénin', margin + 5, footerY + 20);
+
+      footerY += 35;
+    }
+
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Merci pour votre confiance !', pageWidth / 2, footerY, { align: 'center' });
+
+    doc.setFontSize(7);
+    doc.setTextColor(156, 163, 175);
+    const bottomY = 280;
+    doc.text('Conditions de paiement: Paiement à réception', margin, bottomY);
+    doc.text(`Document généré le ${date} à ${time}`, margin, bottomY + 5);
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(margin, bottomY - 3, pageWidth - margin, bottomY - 3);
+
+    doc.save(`Facture_${saleData.invoiceNumber}.pdf`);
+    return true;
+  } catch (error) {
+    console.error('Erreur lors de la génération de la facture:', error);
+    return false;
+  }
+};
+
 export const generateStockReportPDF = (products: any[]) => {
   const doc = new jsPDF();
 
