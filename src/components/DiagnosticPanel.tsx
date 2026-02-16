@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, AlertTriangle, CheckCircle, XCircle, RefreshCw, Database, Wifi, Server, Flame, FileText } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, XCircle, RefreshCw, Database, Wifi, Server, Flame, FileText, Package } from 'lucide-react';
 import { supabaseService } from '../utils/supabaseService';
-import { indexedDBService } from '../utils/indexedDBService'; 
+import { indexedDBService } from '../utils/indexedDBService';
 import { enhancedSyncService } from '../utils/enhancedSyncService';
+import { getProducts, getPurchases, getMultiPurchases, getSales, updateProduct } from '../utils/dataService';
 
 const DiagnosticPanel: React.FC = () => {
   const [diagnostics, setDiagnostics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [authTest, setAuthTest] = useState<any>(null);
   const [storageStats, setStorageStats] = useState<any>(null);
+  const [stockRecalcResult, setStockRecalcResult] = useState<any>(null);
 
   const runDiagnostics = async () => {
     setLoading(true);
@@ -171,18 +173,18 @@ const DiagnosticPanel: React.FC = () => {
         alert('Impossible de synchroniser - Appareil hors ligne');
         return;
       }
-      
+
       const currentUser = JSON.parse(localStorage.getItem('gobex_current_user') || '{}');
       if (currentUser && currentUser.id) {
         console.log('Vérification de la connectivité Supabase...');
         // Vérifier d'abord la connectivité Supabase
         const isConnected = await supabaseService.testConnection();
-        
+
         if (!isConnected) {
           alert('Impossible de se connecter à Supabase');
           return;
         }
-        
+
         console.log('Lancement de la synchronisation manuelle...');
         const syncId = currentUser.userLotId || currentUser.id;
         const result = await enhancedSyncService.manualSync(syncId);
@@ -193,6 +195,135 @@ const DiagnosticPanel: React.FC = () => {
     } catch (error) {
       console.error('Erreur lors de la synchronisation forcée:', error);
       alert(`Erreur de synchronisation: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const recalculateStock = async () => {
+    if (!window.confirm('Cette opération va recalculer le stock de tous les produits basé sur les achats et les ventes enregistrés. Continuer ?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('Début du recalcul du stock...');
+
+      const products = await getProducts();
+      const purchases = await getPurchases();
+      const multiPurchases = await getMultiPurchases();
+      const sales = await getSales();
+
+      const stockMap = new Map<string, {
+        productName: string;
+        totalPurchases: number;
+        totalSales: number;
+        calculatedStock: number;
+        currentStock: number;
+        difference: number;
+      }>();
+
+      products.forEach(product => {
+        stockMap.set(product.id, {
+          productName: product.nom,
+          totalPurchases: 0,
+          totalSales: 0,
+          calculatedStock: 0,
+          currentStock: product.stockActuel,
+          difference: 0
+        });
+      });
+
+      purchases.forEach(purchase => {
+        const stock = stockMap.get(purchase.produitId);
+        if (stock) {
+          stock.totalPurchases += purchase.quantite;
+        }
+      });
+
+      multiPurchases.forEach(multiPurchase => {
+        multiPurchase.items.forEach(item => {
+          const stock = stockMap.get(item.produitId);
+          if (stock) {
+            stock.totalPurchases += item.quantite;
+          }
+        });
+      });
+
+      sales.forEach(sale => {
+        const stock = stockMap.get(sale.produitId);
+        if (stock) {
+          stock.totalSales += sale.quantite;
+        }
+      });
+
+      const updates: Array<any> = [];
+      const report: Array<any> = [];
+
+      stockMap.forEach((data, productId) => {
+        data.calculatedStock = data.totalPurchases - data.totalSales;
+        data.difference = data.calculatedStock - data.currentStock;
+
+        if (data.difference !== 0) {
+          report.push({
+            productId,
+            productName: data.productName,
+            currentStock: data.currentStock,
+            calculatedStock: data.calculatedStock,
+            totalPurchases: data.totalPurchases,
+            totalSales: data.totalSales,
+            difference: data.difference
+          });
+        }
+      });
+
+      if (report.length === 0) {
+        setStockRecalcResult({
+          status: 'success',
+          message: 'Tous les stocks sont corrects. Aucune correction nécessaire.',
+          report: []
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (window.confirm(`${report.length} produit(s) nécessitent une correction de stock. Voulez-vous appliquer les corrections ?`)) {
+        for (const item of report) {
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+            const updatedProduct = {
+              ...product,
+              stockActuel: item.calculatedStock
+            };
+            await updateProduct(updatedProduct);
+            updates.push(item);
+          }
+        }
+
+        window.dispatchEvent(new CustomEvent('stockUpdated'));
+
+        setStockRecalcResult({
+          status: 'success',
+          message: `Stock recalculé avec succès pour ${updates.length} produit(s)`,
+          report: updates
+        });
+
+        alert(`Stock recalculé avec succès !\n${updates.length} produit(s) mis à jour.`);
+      } else {
+        setStockRecalcResult({
+          status: 'cancelled',
+          message: 'Recalcul annulé par l\'utilisateur',
+          report: report
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors du recalcul du stock:', error);
+      setStockRecalcResult({
+        status: 'error',
+        message: `Erreur: ${error.message}`,
+        report: []
+      });
+      alert(`Erreur lors du recalcul: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -217,7 +348,15 @@ const DiagnosticPanel: React.FC = () => {
           <Activity className="h-6 w-6 text-blue-600" />
           <h2 className="text-xl font-semibold text-gray-900">Diagnostic de Synchronisation</h2>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={recalculateStock}
+            disabled={loading}
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+          >
+            {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+            <span>Recalculer Stock</span>
+          </button>
           <button
             onClick={getStorageStats}
             disabled={loading}
@@ -252,6 +391,51 @@ const DiagnosticPanel: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {stockRecalcResult && (
+        <div className="mb-6 p-4 bg-orange-50 rounded-lg">
+          <div className="flex items-center space-x-2 mb-3">
+            {getStatusIcon(stockRecalcResult.status)}
+            <h3 className="font-semibold">Résultat du Recalcul de Stock</h3>
+          </div>
+          <div className="bg-white p-3 rounded border">
+            <p className="text-sm mb-3">{stockRecalcResult.message}</p>
+            {stockRecalcResult.report && stockRecalcResult.report.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Détails des corrections :</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-2 py-2 text-left">Produit</th>
+                        <th className="px-2 py-2 text-right">Achats</th>
+                        <th className="px-2 py-2 text-right">Ventes</th>
+                        <th className="px-2 py-2 text-right">Stock Actuel</th>
+                        <th className="px-2 py-2 text-right">Stock Calculé</th>
+                        <th className="px-2 py-2 text-right">Différence</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockRecalcResult.report.map((item: any, index: number) => (
+                        <tr key={index} className="border-t">
+                          <td className="px-2 py-2">{item.productName}</td>
+                          <td className="px-2 py-2 text-right text-blue-600">{item.totalPurchases}</td>
+                          <td className="px-2 py-2 text-right text-red-600">{item.totalSales}</td>
+                          <td className="px-2 py-2 text-right">{item.currentStock}</td>
+                          <td className="px-2 py-2 text-right font-medium">{item.calculatedStock}</td>
+                          <td className={`px-2 py-2 text-right font-bold ${item.difference > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {item.difference > 0 ? '+' : ''}{item.difference}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {authTest && (
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
