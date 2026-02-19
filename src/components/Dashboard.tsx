@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { User } from '../types';
-import { 
-  TrendingUp, 
-  Package, 
-  DollarSign, 
+import { User, Sale, Product } from '../types';
+import {
+  TrendingUp,
+  Package,
+  DollarSign,
   Percent,
   ArrowUp,
   ArrowDown,
-  Calendar
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
-import { getDashboardStats } from '../utils/dataService';
+import { getDashboardStats, getSales, getProducts } from '../utils/dataService';
 
 interface DashboardProps {
   user: User;
@@ -22,25 +23,32 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     beneficeNet: 0,
     roi: 0
   });
+  const [recentSales, setRecentSales] = useState<Sale[]>([]);
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    const loadStats = async () => {
-      const dashboardStats = await getDashboardStats();
+    const loadData = async () => {
+      const [dashboardStats, sales, products] = await Promise.all([
+        getDashboardStats(),
+        getSales(),
+        getProducts()
+      ]);
+
       setStats(dashboardStats);
-    };
-    loadStats();
 
-    // Écouter l'événement de restauration des données
-    const handleDataRestored = () => {
-      console.log('Données restaurées, rechargement du Dashboard...');
-      loadStats();
+      const sorted = [...sales].sort((a, b) =>
+        new Date(b.dateVente).getTime() - new Date(a.dateVente).getTime()
+      );
+      setRecentSales(sorted.slice(0, 4));
+
+      const lowStock = products.filter(p => p.stockActuel <= p.seuilAlerte);
+      setLowStockProducts(lowStock.slice(0, 4));
     };
 
-    // Écouter l'événement de mise à jour du stock (achats/ventes)
-    const handleStockUpdated = () => {
-      console.log('Stock mis à jour, rechargement du Dashboard...');
-      loadStats();
-    };
+    loadData();
+
+    const handleDataRestored = () => loadData();
+    const handleStockUpdated = () => loadData();
 
     window.addEventListener('dataRestored', handleDataRestored);
     window.addEventListener('stockUpdated', handleStockUpdated);
@@ -57,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       value: `${stats.ventesJour.toLocaleString()} FCFA`,
       icon: TrendingUp,
       color: 'bg-gradient-to-br from-blue-500 to-blue-600',
-      change: '+12%',
+      change: null,
       changeType: 'positive'
     },
     {
@@ -65,15 +73,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       value: `${stats.stockTotal} Articles`,
       icon: Package,
       color: 'bg-gradient-to-br from-green-500 to-green-600',
-      change: '+5%',
+      change: null,
       changeType: 'positive'
     },
     {
       title: 'Bénéfice Net',
       value: `${stats.beneficeNet.toLocaleString()} FCFA`,
       icon: DollarSign,
-      color: 'bg-gradient-to-br from-indigo-500 to-indigo-600',
-      change: '+18%',
+      color: 'bg-gradient-to-br from-teal-500 to-teal-600',
+      change: null,
       changeType: 'positive'
     },
     {
@@ -81,8 +89,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       value: `${stats.roi.toFixed(1)}%`,
       icon: Percent,
       color: 'bg-gradient-to-br from-amber-500 to-amber-600',
-      change: '-2%',
-      changeType: 'negative'
+      change: null,
+      changeType: stats.roi >= 0 ? 'positive' : 'negative'
     }
   ];
 
@@ -113,7 +121,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
               <div className="px-6 py-3 bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Vs. période précédente</span>
+                  <span className="text-sm text-gray-600">Données en temps réel</span>
                   <div className={`flex items-center space-x-1 ${
                     card.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
                   }`}>
@@ -122,7 +130,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                     ) : (
                       <ArrowDown className="h-4 w-4" />
                     )}
-                    <span className="text-sm font-semibold">{card.change}</span>
                   </div>
                 </div>
               </div>
@@ -137,25 +144,34 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             <h2 className="text-xl font-semibold text-gray-900">Ventes Récentes</h2>
             <Calendar className="h-5 w-5 text-gray-400" />
           </div>
-          
+
           <div className="space-y-4">
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <TrendingUp className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Vente #{1000 + item}</p>
-                    <p className="text-sm text-gray-500">Il y a {item} heure(s)</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">{(2500 * item).toLocaleString()} FCFA</p>
-                  <p className="text-sm text-green-600">Terminée</p>
-                </div>
+            {recentSales.length === 0 ? (
+              <div className="text-center py-8">
+                <TrendingUp className="mx-auto h-10 w-10 text-gray-300 mb-3" />
+                <p className="text-gray-500 text-sm">Aucune vente enregistrée</p>
               </div>
-            ))}
+            ) : (
+              recentSales.map((sale) => (
+                <div key={sale.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{sale.produitNom}</p>
+                      <p className="text-xs text-gray-500">
+                        {sale.client} · {new Date(sale.dateVente).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900 text-sm">{sale.total.toLocaleString()} FCFA</p>
+                    <p className="text-xs text-green-600">Qté: {sale.quantite}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -164,29 +180,34 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             <h2 className="text-xl font-semibold text-gray-900">Alertes Stock</h2>
             <Package className="h-5 w-5 text-gray-400" />
           </div>
-          
+
           <div className="space-y-4">
-            {[
-              { nom: 'Coca-Cola 33cl', stock: 5, seuil: 20 },
-              { nom: 'Bière Castel', stock: 12, seuil: 30 },
-              { nom: 'Eau minérale', stock: 8, seuil: 25 }
-            ].map((product, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                    <Package className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{product.nom}</p>
-                    <p className="text-sm text-gray-500">Stock faible</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-amber-700">{product.stock} restants</p>
-                  <p className="text-sm text-gray-500">Seuil: {product.seuil}</p>
-                </div>
+            {lowStockProducts.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="mx-auto h-10 w-10 text-gray-300 mb-3" />
+                <p className="text-gray-500 text-sm">Aucune alerte de stock</p>
               </div>
-            ))}
+            ) : (
+              lowStockProducts.map((product) => (
+                <div key={product.id} className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{product.nom}</p>
+                      <p className="text-xs text-gray-500">Stock faible · Seuil: {product.seuilAlerte}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-semibold text-sm ${product.stockActuel === 0 ? 'text-red-600' : 'text-amber-700'}`}>
+                      {product.stockActuel} restants
+                    </p>
+                    <p className="text-xs text-gray-500">{product.categorie}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

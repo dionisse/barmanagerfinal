@@ -284,15 +284,14 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
             console.warn('⚠️ URL de l\'API eMecef non configurée - vente continuée sans code eMecef');
             // Continuer sans eMecef
           } else {
-          const emecefResult = await emecefService.generateEmecefCode(invoiceData, settings.fiscalite);
-          if (emecefResult.success && emecefResult.data) {
-            emecefCode = emecefResult.data.codeEmecef;
-            console.log('✅ Code eMecef généré avec succès:', emecefCode);
-          } else {
-            console.error('❌ Échec de la génération du code eMecef:', emecefResult.error || emecefResult.message);
-              // Afficher un message d'avertissement mais continuer la vente
+            const emecefResult = await emecefService.generateEmecefCode(invoiceData, settings.fiscalite);
+            if (emecefResult.success && emecefResult.data) {
+              emecefCode = emecefResult.data.codeEmecef;
+              console.log('✅ Code eMecef généré avec succès:', emecefCode);
+            } else {
+              console.error('❌ Échec de la génération du code eMecef:', emecefResult.error || emecefResult.message);
               console.warn('⚠️ Vente continuée sans code eMecef en raison de l\'erreur ci-dessus');
-          }
+            }
           }
         } catch (emecefError) {
           console.error('❌ Erreur lors de l\'appel eMecef:', emecefError);
