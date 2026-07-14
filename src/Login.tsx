@@ -52,7 +52,9 @@ export default function Login() {
             </div>
 
             <div className="visual-tagline">
-              <h2>Gérez votre bar,<br />à la manière d'ici.</h2>
+              <h2>
+                Gérez votre bar,<br />à la manière d'ici.
+              </h2>
               <p>
                 Stocks, ventes, équipes et caisse — une plateforme pensée pour
                 les bars d'Afrique de l'Ouest.
@@ -153,7 +155,11 @@ export default function Login() {
                 <a href="#" className="forgot">Mot de passe oublié ?</a>
               </div>
 
-              <button type="submit" className={`submit-btn ${loading ? "is-loading" : ""}`} disabled={loading}>
+              <button
+                type="submit"
+                className={`submit-btn ${loading ? "is-loading" : ""}`}
+                disabled={loading}
+              >
                 {loading ? (
                   <>
                     <span className="spinner" />
@@ -194,7 +200,9 @@ export default function Login() {
         </div>
       </div>
 
-      <p className="copyright">© 2025 TerangaBar — Conçu pour les bars d'Afrique de l'Ouest</p>
+      <p className="copyright">
+        © 2025 TerangaBar — Conçu pour les bars d'Afrique de l'Ouest
+      </p>
     </div>
   );
 }
