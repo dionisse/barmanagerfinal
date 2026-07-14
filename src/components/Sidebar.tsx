@@ -1,15 +1,5 @@
 import { NavLink } from "react-router-dom";
-import {
-  LayoutDashboard,
-  ShoppingCart,
-  Package,
-  Receipt,
-  Truck,
-  BarChart3,
-  Settings,
-  Wine,
-  X,
-} from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Package, Receipt, Truck, ChartBar as BarChart3, Settings, Wine, X } from "lucide-react";
 
 const navItems = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },

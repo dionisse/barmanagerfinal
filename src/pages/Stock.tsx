@@ -1,15 +1,5 @@
 import { useState, useMemo } from "react";
-import {
-  Search,
-  Plus,
-  Pencil,
-  Trash2,
-  Package,
-  AlertTriangle,
-  TrendingUp,
-  Boxes,
-  X,
-} from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Package, TriangleAlert as AlertTriangle, TrendingUp, Boxes, X } from "lucide-react";
 import { useStore, storeActions } from "../lib/store";
 import { formatFCFA, formatNumber, getStockValue, getLowStockProducts } from "../lib/utils";
 import { Modal } from "../components/Modal";

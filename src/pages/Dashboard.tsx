@@ -14,16 +14,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import {
-  TrendingUp,
-  ShoppingBag,
-  Package,
-  AlertTriangle,
-  ArrowRight,
-  Wallet,
-  Trophy,
-  Calendar,
-} from "lucide-react";
+import { TrendingUp, ShoppingBag, Package, TriangleAlert as AlertTriangle, ArrowRight, Wallet, Trophy, Calendar } from "lucide-react";
 import { useStore } from "../lib/store";
 import { StatCard } from "../components/StatCard";
 import {
