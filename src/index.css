@@ -29,15 +29,10 @@
   --neutral-800: #2e2922;
   --neutral-900: #1c1915;
 
-  --success-500: #2a9d8f;
-  --warning-500: #e9c46a;
-  --error-500: #e63946;
-
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 24px;
 
-  --shadow-soft: 0 8px 30px rgba(44, 38, 26, 0.08);
   --shadow-card: 0 30px 80px rgba(40, 30, 20, 0.28);
 
   --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;

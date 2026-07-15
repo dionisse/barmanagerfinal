@@ -14,7 +14,7 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page">
+    <div className="login-page" data-loaded="true">
       <div className="bg-blobs">
         <span className="blob blob-1" />
         <span className="blob blob-2" />
