@@ -429,19 +429,32 @@ export class EnhancedSyncService {
       // Récupérer les données locales avant de tout effacer
       const localData = await indexedDBService.collectAllData();
       const localMetadata = await indexedDBService.getSyncMetadata();
+      const localDataCount = this.countDataItems(localData);
 
       // Récupérer les données du cloud
       const result = await supabaseService.getUserData(userId);
 
       if (result.success && result.data) {
+        const cloudDataCount = this.countDataItems(result.data);
         const cloudLastSync = result.lastSync ? new Date(result.lastSync) : new Date(0);
         const localLastSync = localMetadata?.lastSync ? new Date(localMetadata.lastSync) : new Date(0);
 
-        this.logDebug(`📊 Comparaison - Local: ${localLastSync.toISOString()}, Cloud: ${cloudLastSync.toISOString()}`);
+        this.logDebug(`📊 Comparaison - Local: ${localLastSync.toISOString()} (${localDataCount} items), Cloud: ${cloudLastSync.toISOString()} (${cloudDataCount} items)`);
 
-        // Si les données cloud sont plus récentes, les restaurer
-        if (cloudLastSync > localLastSync) {
-          this.logDebug(`📥 Données cloud plus récentes - Restauration complète`);
+        // PROTECTION: Ne jamais écraser des données locales par des données cloud vides
+        if (cloudDataCount === 0 && localDataCount > 0) {
+          this.logDebug(`🛡️ Données cloud vides mais ${localDataCount} données locales - Conservation et upload vers le cloud`);
+          await this.uploadCloudData();
+          return {
+            success: true,
+            message: 'Données locales conservées et synchronisées vers le cloud (cloud était vide)',
+            timestamp: new Date().toISOString()
+          };
+        }
+
+        // Si les données cloud sont plus récentes ET non vides, les restaurer
+        if (cloudLastSync > localLastSync && cloudDataCount > 0) {
+          this.logDebug(`📥 Données cloud plus récentes et non vides - Restauration complète`);
           await indexedDBService.clearAllData();
           await indexedDBService.restoreAllData(result.data);
 
@@ -500,6 +513,17 @@ export class EnhancedSyncService {
   }
 
   // Fusionner les données locales et cloud en gardant les plus complètes
+  private countDataItems(data: any): number {
+    if (!data) return 0;
+    const keys = ['products', 'sales', 'purchases', 'multiPurchases', 'packaging',
+                  'packagingPurchases', 'expenses', 'inventoryRecords', 'userLots', 'licenses', 'users'];
+    let total = 0;
+    for (const key of keys) {
+      if (Array.isArray(data[key])) total += data[key].length;
+    }
+    return total;
+  }
+
   private mergeData(localData: any, cloudData: any): any {
     const merged = { ...cloudData };
 

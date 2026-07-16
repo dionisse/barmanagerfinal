@@ -57,6 +57,7 @@ function App() {
 
       storageService.setUserLotId(null);
       await indexedDBService.setUserLotId(null);
+      await indexedDBService.forceMigrationFromLocalStorage();
       enhancedSyncService.startAutoSync(ownerUserId);
       await enhancedSyncService.forceDownloadFromCloud(ownerUserId);
       setIsLoading(false);
@@ -86,6 +87,7 @@ function App() {
         // Set storage service user_lot_id for data isolation
         storageService.setUserLotId(userLotId);
         await indexedDBService.setUserLotId(userLotId);
+        await indexedDBService.forceMigrationFromLocalStorage();
 
         // Mettre à jour l'utilisateur dans le localStorage
         localStorage.setItem('gobex_current_user', JSON.stringify(updatedUser));
@@ -145,6 +147,7 @@ function App() {
 
         storageService.setUserLotId(null);
         await indexedDBService.setUserLotId(null);
+        await indexedDBService.forceMigrationFromLocalStorage();
         enhancedSyncService.startAutoSync(ownerUserId);
         await enhancedSyncService.forceDownloadFromCloud(ownerUserId);
       } else {
@@ -161,6 +164,7 @@ function App() {
 
           storageService.setUserLotId(userLotId);
           await indexedDBService.setUserLotId(userLotId);
+          await indexedDBService.forceMigrationFromLocalStorage();
           enhancedSyncService.startAutoSync(userLotId);
           await enhancedSyncService.forceDownloadFromCloud(userLotId);
         }
