@@ -6,11 +6,8 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-  strictPort: true,
-  allowedHosts: true,
-  hmr: { overlay: false },
-  proxy: {
-    "/api": { target: "http://localhost:3000", changeOrigin: true },
+    strictPort: true,
+    allowedHosts: true,
+    hmr: { overlay: false },
   },
-},
 });
