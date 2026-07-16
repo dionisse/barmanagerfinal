@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, MultiPurchase, PurchaseItem, Product } from '../types';
-import { Plus, Search, Filter, Edit, Trash2, Package, ShoppingBag, ShoppingCart, Calculator, RefreshCw } from 'lucide-react';
+import { Plus, Search, Filter, CreditCard as Edit, Trash2, Package, ShoppingBag, ShoppingCart, Calculator, RefreshCw } from 'lucide-react';
 import { getMultiPurchases, getProducts, addMultiPurchase, updateProduct, addProduct, updateMultiPurchase, deleteMultiPurchase, recalculateStockFromPurchases } from '../utils/dataService';
 
 interface AchatsModuleProps {
@@ -35,6 +35,7 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
 
   const categories = ['Boissons',  'Alcools', 'Snacks', 'Cigarettes', 'Autres'];
   const unitesParCasierOptions = [
+    { value: '6', label: '06 unités/pack' },
     { value: '12', label: '12 unités/casier' },
     { value: '20', label: '20 unités/casier' },
     { value: '24', label: '24 unités/casier' },
@@ -381,10 +382,12 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
     }
   };
 
-  const filteredPurchases = purchases.filter(purchase =>
-    purchase.fournisseur.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    purchase.numeroCommande.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPurchases = purchases
+    .filter(purchase =>
+      purchase.fournisseur.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      purchase.numeroCommande.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.dateAchat).getTime() - new Date(a.dateAchat).getTime());
 
   const totalAchats = filteredPurchases.reduce((sum, purchase) => sum + purchase.totalGeneral, 0);
 
@@ -785,6 +788,7 @@ const AchatsModule: React.FC<AchatsModuleProps> = ({ user }) => {
             <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
               <h3 className="text-lg font-semibold mb-3">💡 Aide Casiers</h3>
               <div className="space-y-2 text-sm">
+                <p><strong>06 unités/pack:</strong> Packs de 6 bouteilles</p>
                 <p><strong>12 unités/casier:</strong> Bières, sodas standards</p>
                 <p><strong>20 unités/casier:</strong> Petites bouteilles</p>
                 <p><strong>24 unités/casier:</strong> Canettes, bouteilles 33cl</p>
