@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { User } from '../types';
-import { Lock, User as UserIcon, Building, Shield, AlertTriangle } from 'lucide-react';
 import { simpleAuth } from '../utils/simpleAuthService';
 
 interface LoginFormProps {
@@ -10,6 +9,7 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,10 +22,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       const authResult = await simpleAuth.login(username, password);
 
       if (authResult.success && authResult.user) {
-        console.log('✅ Authentification réussie:', authResult.user);
         onLogin(authResult.user);
       } else {
-        console.warn('❌ Échec authentification:', authResult.message);
         setError(authResult.message || 'Nom d\'utilisateur ou mot de passe incorrect');
       }
     } catch (err) {
@@ -37,93 +35,161 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-12 text-center">
-            <Building className="mx-auto h-16 w-16 text-white mb-4" />
-            <h1 className="text-3xl font-bold text-white">AHANDJO</h1>
-            <p className="text-blue-100 mt-2">Gestion de Bar</p>
-            <div className="flex items-center justify-center space-x-2 mt-4">
-              <Shield className="h-4 w-4 text-blue-200" />
-              <span className="text-blue-200 text-sm">Système de licences intégré</span>
-            </div>
+    <div className="login-page">
+      <div className="login-aurora" aria-hidden="true">
+        <span className="login-blob login-blob-1" />
+        <span className="login-blob login-blob-2" />
+        <span className="login-blob login-blob-3" />
+      </div>
+
+      <div className="login-card">
+        <div className="login-aside">
+          <div className="login-brand">
+            <span className="login-brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <path d="M12 7v10M7.5 9.5 12 12l4.5-2.5M7.5 14.5 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <span className="login-brand-name">AHANDJO</span>
           </div>
-          
-          <div className="px-8 py-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nom d'utilisateur
-                </label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Entrez votre nom d'utilisateur"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mot de passe
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Entrez votre mot de passe"
-                    required
-                  />
-                </div>
-              </div>
+          <div className="login-aside-content">
+            <h1 className="login-aside-title">
+              Bienvenue à<br />nouveau.
+            </h1>
+            <p className="login-aside-sub">
+              Connectez-vous pour reprendre la gestion de votre établissement là où vous l'avez laissée.
+            </p>
 
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-red-600" />
-                    <p className="text-red-800 text-sm">{error}</p>
-                  </div>
-                </div>
+            <ul className="login-features">
+              <li>
+                <span className="login-feat-dot" />
+                Gestion des ventes en temps réel
+              </li>
+              <li>
+                <span className="login-feat-dot" />
+                Suivi des stocks et achats
+              </li>
+              <li>
+                <span className="login-feat-dot" />
+                Système de licences sécurisé
+              </li>
+            </ul>
+          </div>
+
+          <p className="login-aside-footer">© 2026 AHANDJO — Gestion de Bar</p>
+        </div>
+
+        <div className="login-form-panel">
+          <div className="login-form-head">
+            <h2 className="login-form-title">Connexion</h2>
+            <p className="login-form-sub">Entrez vos identifiants pour continuer.</p>
+          </div>
+
+          <form className="login-form" onSubmit={handleSubmit} noValidate>
+            <div className="login-field">
+              <label htmlFor="username">Nom d'utilisateur</label>
+              <div className={`login-input-wrap ${error ? 'is-error' : ''}`}>
+                <svg className="login-input-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <input
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="Entrez votre nom d'utilisateur"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="login-field">
+              <label htmlFor="password">Mot de passe</label>
+              <div className={`login-input-wrap ${error ? 'is-error' : ''}`}>
+                <svg className="login-input-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder="Entrez votre mot de passe"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="login-toggle-eye"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                >
+                  {showPassword ? (
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path d="M9.4 5.2A10.5 10.5 0 0 1 12 5c5 0 9 5 9 7a14 14 0 0 1-2.3 2.8M6.2 6.2C3.8 7.7 3 10 3 12c0 2 4 7 9 7a9.5 9.5 0 0 0 3.8-.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 12c0-2 4-7 9-7s9 5 9 7-4 7-9 7-9-5-9-7Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                      <circle cx="12" cy="12" r="2.6" stroke="currentColor" strokeWidth="1.6" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="login-alert login-alert-error" role="alert">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M12 7.5v5M12 16v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button className="login-submit" type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <span className="login-spinner" aria-hidden="true" />
+                  Vérification…
+                </>
+              ) : (
+                'Se connecter'
               )}
+            </button>
+          </form>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
-              >
-                {loading ? 'Vérification...' : 'Se connecter'}
-              </button>
-            </form>
-
-            {/* Information sur les licences */}
-            <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center space-x-2 mb-2">
-                <Shield className="h-4 w-4 text-blue-600" />
-                <span className="text-blue-800 font-medium text-sm">Accès par licence</span>
-              </div>
-              <p className="text-blue-700 text-xs">
-                Les utilisateurs Gestionnaire et Employé doivent avoir une licence active pour accéder au système.
-              </p>
-            </div>
-
-            <div className="mt-8 text-center">
-              <p className="text-xs text-gray-500">
-                AHANDJO v2.0.1 - Système de Gestion de Bar Professionnel
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                Système de licences intégré et sécurisé
-              </p>
-            </div>
+          <div className="login-divider">
+            <span>Accès par licence</span>
           </div>
+
+          <div style={{
+            background: 'rgba(59,130,246,.08)',
+            border: '1px solid rgba(59,130,246,.2)',
+            borderRadius: '8px',
+            padding: '12px 14px',
+          }}>
+            <p style={{
+              fontSize: '.75rem',
+              color: 'var(--login-text-secondary)',
+              lineHeight: 1.6,
+              margin: 0,
+            }}>
+              Les utilisateurs Gestionnaire et Employé doivent avoir une licence active pour accéder au système.
+            </p>
+          </div>
+
+          <p className="login-form-foot">
+            AHANDJO v2.0.1 — Système de Gestion de Bar Professionnel
+          </p>
         </div>
       </div>
     </div>
