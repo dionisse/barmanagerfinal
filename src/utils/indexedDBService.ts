@@ -83,7 +83,7 @@ interface GobexDB extends DBSchema {
 
 export class IndexedDBService {
   private baseDbName = 'gobex-db';
-  private dbVersion = 4;
+  private dbVersion = 5;
   private db: IDBPDatabase<GobexDB> | null = null;
   private debugMode = true;
   private currentUserLotId: string | null = null;
@@ -209,6 +209,10 @@ export class IndexedDBService {
               stockSalesStore.createIndex('by-id', 'id');
               this.logDebug('Store stock_sales_calculations créé');
             }
+          }
+
+          // Version 5 - Ajouter le store pour les versements
+          if (oldVersion < 5) {
             if (!db.objectStoreNames.contains('versements')) {
               const versementsStore = db.createObjectStore('versements', { keyPath: 'id' });
               versementsStore.createIndex('by-id', 'id');
