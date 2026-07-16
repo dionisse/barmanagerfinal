@@ -1,4 +1,4 @@
-import { Product, Purchase, Sale, DashboardStats, MultiPurchase, Packaging, PackagingPurchase, Expense, License, InventoryRecord, Settings, UserLot, StockSalesCalculation } from '../types';
+import { Product, Purchase, Sale, DashboardStats, MultiPurchase, Packaging, PackagingPurchase, Expense, License, InventoryRecord, Settings, UserLot, StockSalesCalculation, Versement } from '../types';
 import { supabaseService } from './supabaseService';
 import { indexedDBService } from './indexedDBService';
 import { enhancedSyncService } from './enhancedSyncService';
@@ -316,6 +316,26 @@ export const deleteExpense = async (expenseId: string): Promise<void> => {
   await indexedDBService.deleteData('expenses', expenseId);
   
   // Trigger sync after data change
+  triggerSync();
+};
+
+// Versements
+export const getVersements = async (): Promise<Versement[]> => {
+  return await indexedDBService.getAllData<Versement>('versements');
+};
+
+export const addVersement = async (versement: Versement): Promise<void> => {
+  await indexedDBService.saveData('versements', versement);
+  triggerSync();
+};
+
+export const updateVersement = async (updatedVersement: Versement): Promise<void> => {
+  await indexedDBService.saveData('versements', updatedVersement);
+  triggerSync();
+};
+
+export const deleteVersement = async (versementId: string): Promise<void> => {
+  await indexedDBService.deleteData('versements', versementId);
   triggerSync();
 };
 

@@ -119,6 +119,13 @@ export interface Expense {
   type: 'Dépense' | 'Charge';
 }
 
+export interface Versement {
+  id: string;
+  date: string;
+  nomCaissier: string;
+  montant: number;
+}
+
 export interface LicenseSettings {
   Kpêvi: { duree: 1; prix: 15000 };
   Kléoun: { duree: 3; prix: 40000 };

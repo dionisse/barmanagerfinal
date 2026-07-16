@@ -74,6 +74,11 @@ interface GobexDB extends DBSchema {
     value: any;
     indexes: { 'by-id': string };
   };
+  versements: {
+    key: string;
+    value: any;
+    indexes: { 'by-id': string };
+  };
 }
 
 export class IndexedDBService {
@@ -203,6 +208,11 @@ export class IndexedDBService {
               const stockSalesStore = db.createObjectStore('stock_sales_calculations', { keyPath: 'id' });
               stockSalesStore.createIndex('by-id', 'id');
               this.logDebug('Store stock_sales_calculations créé');
+            }
+            if (!db.objectStoreNames.contains('versements')) {
+              const versementsStore = db.createObjectStore('versements', { keyPath: 'id' });
+              versementsStore.createIndex('by-id', 'id');
+              this.logDebug('Store versements créé');
             }
           }
         },
@@ -688,7 +698,7 @@ export class IndexedDBService {
       const stores = [
         'products', 'sales', 'purchases', 'multi_purchases',
         'packaging', 'packaging_purchases', 'expenses',
-        'inventory_records', 'user_lots', 'licenses', 'users'
+        'inventory_records', 'user_lots', 'licenses', 'users', 'versements'
       ];
       
       for (const store of stores) {
@@ -735,7 +745,7 @@ export class IndexedDBService {
       const stores = [
         'products', 'sales', 'purchases', 'multi_purchases',
         'packaging', 'packaging_purchases', 'expenses',
-        'inventory_records', 'user_lots', 'licenses', 'users'
+        'inventory_records', 'user_lots', 'licenses', 'users', 'versements'
       ];
       
       const stats = {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, Expense } from '../types';
-import { Plus, Search, Filter, Edit, Trash2, DollarSign, TrendingDown, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { getExpenses, addExpense, updateExpense, deleteExpense } from '../utils/dataService';
+import { User, Expense, Versement } from '../types';
+import { Plus, Search, Filter, CreditCard as Edit, Trash2, DollarSign, TrendingDown, Calendar, ArrowUpDown, ArrowUp, ArrowDown, Wallet, Scale } from 'lucide-react';
+import { getExpenses, addExpense, updateExpense, deleteExpense, getVersements, addVersement, updateVersement, deleteVersement, getSales } from '../utils/dataService';
 
 interface DepensesModuleProps {
   user: User;
@@ -12,8 +12,11 @@ type SortOrder = 'asc' | 'desc';
 
 const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [versements, setVersements] = useState<Versement[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showVersementForm, setShowVersementForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editingVersement, setEditingVersement] = useState<Versement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedType, setSelectedType] = useState('');
@@ -29,6 +32,12 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
     destinataire: '',
     type: 'Dépense' as 'Dépense' | 'Charge'
   });
+  const [versementFormData, setVersementFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    nomCaissier: '',
+    montant: ''
+  });
+  const [periodSalesTotal, setPeriodSalesTotal] = useState(0);
 
   const categories = [
     'Électricité',
@@ -45,12 +54,11 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
   ];
 
   useEffect(() => {
-    loadExpenses();
+    loadAll();
 
-    // Écouter l'événement de restauration des données
     const handleDataRestored = () => {
       console.log('Données restaurées, rechargement du module Dépenses...');
-      loadExpenses();
+      loadAll();
     };
 
     window.addEventListener('dataRestored', handleDataRestored);
@@ -60,9 +68,32 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
     };
   }, []);
 
-  const loadExpenses = async () => {
-    const expensesData = await getExpenses();
+  useEffect(() => {
+    if (dateDebut || dateFin) {
+      loadPeriodSales();
+    } else {
+      setPeriodSalesTotal(0);
+    }
+  }, [dateDebut, dateFin]);
+
+  const loadAll = async () => {
+    const [expensesData, versementsData] = await Promise.all([
+      getExpenses(),
+      getVersements()
+    ]);
     setExpenses(expensesData);
+    setVersements(versementsData);
+  };
+
+  const loadPeriodSales = async () => {
+    const sales = await getSales();
+    const filtered = sales.filter(s => {
+      const matchDebut = dateDebut === '' || s.dateVente >= dateDebut;
+      const matchFin = dateFin === '' || s.dateVente <= dateFin;
+      return matchDebut && matchFin;
+    });
+    const total = filtered.reduce((sum, s) => sum + s.total, 0);
+    setPeriodSalesTotal(total);
   };
 
   const resetForm = () => {
@@ -77,6 +108,15 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
     setEditingExpense(null);
   };
 
+  const resetVersementForm = () => {
+    setVersementFormData({
+      date: new Date().toISOString().split('T')[0],
+      nomCaissier: '',
+      montant: ''
+    });
+    setEditingVersement(null);
+  };
+
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
     setFormData({
@@ -88,6 +128,16 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
       type: expense.type
     });
     setShowForm(true);
+  };
+
+  const handleEditVersement = (versement: Versement) => {
+    setEditingVersement(versement);
+    setVersementFormData({
+      date: versement.date,
+      nomCaissier: versement.nomCaissier,
+      montant: versement.montant.toString()
+    });
+    setShowVersementForm(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,13 +161,41 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
 
     resetForm();
     setShowForm(false);
-    loadExpenses();
+    loadAll();
+  };
+
+  const handleVersementSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const versementData: Versement = {
+      id: editingVersement?.id || Date.now().toString(),
+      date: versementFormData.date,
+      nomCaissier: versementFormData.nomCaissier,
+      montant: parseFloat(versementFormData.montant)
+    };
+
+    if (editingVersement) {
+      await updateVersement(versementData);
+    } else {
+      await addVersement(versementData);
+    }
+
+    resetVersementForm();
+    setShowVersementForm(false);
+    loadAll();
   };
 
   const handleDelete = async (expenseId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette dépense ?')) {
       await deleteExpense(expenseId);
-      loadExpenses();
+      loadAll();
+    }
+  };
+
+  const handleDeleteVersement = async (versementId: string) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce versement ?')) {
+      await deleteVersement(versementId);
+      loadAll();
     }
   };
 
@@ -219,6 +297,14 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
       })
     : expenses;
 
+  const periodVersements = dateDebut || dateFin
+    ? versements.filter(v => {
+        const matchesDateDebut = dateDebut === '' || v.date >= dateDebut;
+        const matchesDateFin = dateFin === '' || v.date <= dateFin;
+        return matchesDateDebut && matchesDateFin;
+      })
+    : versements;
+
   const todayExpenses = expenses.filter(e => e.date === today);
   const monthExpenses = expenses.filter(e => e.date.startsWith(thisMonth));
 
@@ -228,6 +314,10 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
   const totalPeriodDepenses = periodExpenses.filter(e => e.type === 'Dépense').reduce((sum, expense) => sum + expense.montant, 0);
   const totalPeriodCharges = periodExpenses.filter(e => e.type === 'Charge').reduce((sum, expense) => sum + expense.montant, 0);
   const totalPeriod = totalPeriodDepenses + totalPeriodCharges;
+  const totalPeriodVersements = periodVersements.reduce((sum, v) => sum + v.montant, 0);
+
+  // Solde de la Période = Vente Total - Dépenses et Charges - Versements
+  const soldePeriode = periodSalesTotal - totalPeriod - totalPeriodVersements;
 
   const totalDepenses = expenses.filter(e => e.type === 'Dépense').reduce((sum, expense) => sum + expense.montant, 0);
   const totalCharges = expenses.filter(e => e.type === 'Charge').reduce((sum, expense) => sum + expense.montant, 0);
@@ -244,20 +334,31 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
 
   const isPeriodFiltered = dateDebut !== '' || dateFin !== '';
 
+  const sortedVersements = [...periodVersements].sort((a, b) => b.date.localeCompare(a.date));
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dépenses et Charges</h1>
-          <p className="text-gray-600 mt-2">Gérez vos dépenses journalières et charges fixes</p>
+          <p className="text-gray-600 mt-2">Gérez vos dépenses, charges et versements</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Nouvelle Dépense</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => setShowVersementForm(true)}
+            className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center space-x-2 shadow-sm"
+          >
+            <Wallet className="h-5 w-5" />
+            <span>Enregistrer un Versement</span>
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 shadow-sm"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Nouvelle Dépense</span>
+          </button>
+        </div>
       </div>
 
       {/* Filtres de période */}
@@ -325,6 +426,46 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* Solde de la Période */}
+      {isPeriodFiltered && (
+        <div className={`rounded-xl shadow-lg p-6 mb-6 border-2 ${soldePeriode >= 0 ? 'bg-gradient-to-r from-emerald-50 to-emerald-100 border-emerald-300' : 'bg-gradient-to-r from-red-50 to-red-100 border-red-300'}`}>
+          <h3 className="text-lg font-semibold mb-4 flex items-center text-gray-900">
+            <Scale className="h-5 w-5 mr-2 text-gray-700" />
+            Solde de la Période
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="bg-white rounded-lg p-4 shadow">
+              <p className="text-sm font-medium text-gray-600 mb-1">Vente Totale</p>
+              <p className="text-xl font-bold text-blue-700">{periodSalesTotal.toLocaleString()} FCFA</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow">
+              <p className="text-sm font-medium text-gray-600 mb-1">Dépenses + Charges</p>
+              <p className="text-xl font-bold text-red-600">{totalPeriod.toLocaleString()} FCFA</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow">
+              <p className="text-sm font-medium text-gray-600 mb-1">Versements</p>
+              <p className="text-xl font-bold text-emerald-600">{totalPeriodVersements.toLocaleString()} FCFA</p>
+            </div>
+            <div className={`bg-white rounded-lg p-4 shadow border-l-4 ${soldePeriode >= 0 ? 'border-emerald-500' : 'border-red-500'}`}>
+              <p className="text-sm font-medium text-gray-600 mb-1">
+                {soldePeriode >= 0 ? 'Surplus de Vente' : 'Manquant de Vente'}
+              </p>
+              <p className={`text-xl font-bold ${soldePeriode >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                {Math.abs(soldePeriode).toLocaleString()} FCFA
+              </p>
+            </div>
+          </div>
+          <div className={`text-sm font-medium px-4 py-3 rounded-lg ${soldePeriode >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+            {soldePeriode >= 0
+              ? `Surplus de vente non versé: ${soldePeriode.toLocaleString()} FCFA — la caisse a un excédent positif.`
+              : `Manquant de versement: ${Math.abs(soldePeriode).toLocaleString()} FCFA — les versements sont supérieurs au bénéfice de la période.`}
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Formule: Solde = Vente Totale − (Dépenses + Charges) − Versements
+          </p>
+        </div>
+      )}
 
       {/* Statistiques de la période */}
       {isPeriodFiltered && (
@@ -434,6 +575,75 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
           </div>
         </div>
       )}
+
+      {/* Versements Table */}
+      <div className="bg-white rounded-xl shadow-lg mb-8">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <Wallet className="h-5 w-5 mr-2 text-emerald-600" />
+              Versements Effectués
+              {isPeriodFiltered && <span className="text-sm font-normal text-gray-500 ml-2">(Période sélectionnée)</span>}
+            </h3>
+            <button
+              onClick={() => setShowVersementForm(true)}
+              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center space-x-1"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Ajouter</span>
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Caissier</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sortedVersements.map((versement) => (
+                <tr key={versement.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {new Date(versement.date).toLocaleDateString('fr-FR')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {versement.nomCaissier}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-emerald-600">
+                    {versement.montant.toLocaleString()} FCFA
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEditVersement(versement)}
+                        className="text-blue-600 hover:text-blue-900 p-1 rounded"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVersement(versement.id)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {sortedVersements.length === 0 && (
+          <div className="p-8 text-center">
+            <Wallet className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <p className="text-gray-500">Aucun versement enregistré</p>
+          </div>
+        )}
+      </div>
 
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -547,6 +757,78 @@ const DepensesModule: React.FC<DepensesModuleProps> = ({ user }) => {
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
                   {editingExpense ? 'Modifier' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showVersementForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editingVersement ? 'Modifier le Versement' : 'Enregistrer un Versement'}
+              </h2>
+            </div>
+            <form onSubmit={handleVersementSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date du versement
+                </label>
+                <input
+                  type="date"
+                  value={versementFormData.date}
+                  onChange={(e) => setVersementFormData({ ...versementFormData, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom du caissier
+                </label>
+                <input
+                  type="text"
+                  value={versementFormData.nomCaissier}
+                  onChange={(e) => setVersementFormData({ ...versementFormData, nomCaissier: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Montant du versement (FCFA)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={versementFormData.montant}
+                  onChange={(e) => setVersementFormData({ ...versementFormData, montant: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetVersementForm();
+                    setShowVersementForm(false);
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                  {editingVersement ? 'Modifier' : 'Enregistrer'}
                 </button>
               </div>
             </form>
