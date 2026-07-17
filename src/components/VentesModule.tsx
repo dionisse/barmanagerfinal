@@ -42,6 +42,8 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     quantite: '',
     prixUnitaire: ''
   });
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [stockCalcFormData, setStockCalcFormData] = useState({
     productId: '',
     periodStart: new Date().toISOString().split('T')[0],
@@ -953,22 +955,60 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                     />
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Produit
                     </label>
-                    <select
-                      value={formData.produitId}
-                      onChange={(e) => setFormData({ ...formData, produitId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    >
-                      <option value="">Sélectionner un produit</option>
-                      {products.filter(p => p.stockActuel > 0).map(product => (
-                        <option key={product.id} value={product.id}>
-                          {product.nom} - {product.prixVente} FCFA (Stock: {product.stockActuel})
-                        </option>
-                      ))}
-                    </select>
+                    <Search className="absolute left-3 top-[42px] h-4 w-4 text-gray-400 pointer-events-none z-10" />
+                    <input
+                      type="text"
+                      placeholder="Rechercher un produit..."
+                      value={productSearchQuery}
+                      onChange={(e) => {
+                        setProductSearchQuery(e.target.value);
+                        setShowProductDropdown(true);
+                      }}
+                      onFocus={() => setShowProductDropdown(true)}
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                    {showProductDropdown && productSearchQuery.length >= 1 && (
+                      <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                        {products
+                          .filter(p =>
+                            p.stockActuel > 0 &&
+                            p.nom.toLowerCase().includes(productSearchQuery.toLowerCase())
+                          )
+                          .slice(0, 10)
+                          .map(product => (
+                            <button
+                              key={product.id}
+                              onClick={() => {
+                                setFormData({ ...formData, produitId: product.id });
+                                setProductSearchQuery(`${product.nom} — ${product.prixVente.toLocaleString()} FCFA (Stock: ${product.stockActuel})`);
+                                setShowProductDropdown(false);
+                              }}
+                              className="w-full px-4 py-2 text-left hover:bg-green-50 transition-colors border-b border-gray-100 last:border-0"
+                            >
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-sm font-medium text-gray-900">{product.nom}</span>
+                                  <span className="text-xs text-gray-500 ml-2">{product.categorie}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-sm font-semibold text-green-600">{product.prixVente.toLocaleString()} F</span>
+                                  <span className="text-xs text-gray-400 ml-2">Stock: {product.stockActuel}</span>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        {products.filter(p =>
+                          p.stockActuel > 0 &&
+                          p.nom.toLowerCase().includes(productSearchQuery.toLowerCase())
+                        ).length === 0 && (
+                          <div className="px-4 py-3 text-sm text-gray-500">Aucun produit trouvé</div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -1704,6 +1744,26 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                           title="Modifier"
                         >
                           <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            generateModernSaleInvoice({
+                              invoiceNumber: sale.numeroFacture || `FAC-${sale.id}`,
+                              client: sale.client,
+                              items: [{
+                                produitId: sale.produitId,
+                                produitNom: sale.produitNom,
+                                prixUnitaire: sale.prixUnitaire,
+                                quantite: sale.quantite,
+                                total: sale.total
+                              }],
+                              total: sale.total
+                            }).catch(err => console.error('Erreur PDF:', err));
+                          }}
+                          className="text-green-600 hover:text-green-900 p-1 rounded"
+                          title="Réimprimer la facture"
+                        >
+                          <FileText className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteSale(sale)}

@@ -79,11 +79,21 @@ interface GobexDB extends DBSchema {
     value: any;
     indexes: { 'by-id': string };
   };
+  clients: {
+    key: string;
+    value: any;
+    indexes: { 'by-id': string };
+  };
+  suppliers: {
+    key: string;
+    value: any;
+    indexes: { 'by-id': string };
+  };
 }
 
 export class IndexedDBService {
   private baseDbName = 'gobex-db';
-  private dbVersion = 5;
+  private dbVersion = 6;
   private db: IDBPDatabase<GobexDB> | null = null;
   private debugMode = true;
   private currentUserLotId: string | null = null;
@@ -217,6 +227,20 @@ export class IndexedDBService {
               const versementsStore = db.createObjectStore('versements', { keyPath: 'id' });
               versementsStore.createIndex('by-id', 'id');
               this.logDebug('Store versements créé');
+            }
+          }
+
+          // Version 6 - Ajouter les stores pour les clients et fournisseurs
+          if (oldVersion < 6) {
+            if (!db.objectStoreNames.contains('clients')) {
+              const clientsStore = db.createObjectStore('clients', { keyPath: 'id' });
+              clientsStore.createIndex('by-id', 'id');
+              this.logDebug('Store clients créé');
+            }
+            if (!db.objectStoreNames.contains('suppliers')) {
+              const suppliersStore = db.createObjectStore('suppliers', { keyPath: 'id' });
+              suppliersStore.createIndex('by-id', 'id');
+              this.logDebug('Store suppliers créé');
             }
           }
         },

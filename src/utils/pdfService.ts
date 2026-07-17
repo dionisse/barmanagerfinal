@@ -633,3 +633,196 @@ export const generateStockReportPDF = (products: any[]) => {
   // Save the PDF
   doc.save(`Rapport_Stock_${new Date().toISOString().split('T')[0]}.pdf`);
 };
+
+// Clôture de caisse PDF
+export const generateDailyClosingPDF = async (data: {
+  date: string;
+  ventes: { produitNom: string; quantite: number; total: number; client: string }[];
+  depenses: { description: string; montant: number; type: string }[];
+  versements: { nomCaissier: string; montant: number }[];
+  totalVentes: number;
+  totalDepenses: number;
+  totalVersements: number;
+  margeBrute: number;
+  beneficeNet: number;
+}) => {
+  const settings = await getSettings();
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const pageWidth = 210;
+  const margin = 20;
+  const formatNum = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  // Header
+  doc.setFillColor(245, 247, 250);
+  doc.rect(0, 0, pageWidth, 50, 'F');
+
+  doc.setTextColor(31, 41, 55);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text(settings?.entreprise?.nom || 'GOBEX BAR', margin, 25);
+
+  doc.setFontSize(14);
+  doc.setTextColor(37, 99, 235);
+  doc.text('CLÔTURE DE CAISSE', pageWidth - margin, 25, { align: 'right' });
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(75, 85, 99);
+  doc.text(`Date: ${data.date}`, margin, 38);
+  doc.text(`Heure: ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 38, { align: 'right' });
+
+  let y = 60;
+
+  // Sales section
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(31, 41, 55);
+  doc.text('VENTES', margin, y);
+  y += 5;
+
+  autoTable(doc, {
+    head: [['Produit', 'Qté', 'Client', 'Total']],
+    body: data.ventes.map(v => [
+      v.produitNom,
+      v.quantite.toString(),
+      v.client,
+      `${formatNum(v.total)} FCFA`
+    ]),
+    startY: y,
+    theme: 'striped',
+    headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 8, textColor: [31, 41, 55] },
+    columnStyles: {
+      0: { cellWidth: 70 },
+      1: { cellWidth: 20, halign: 'center' },
+      2: { cellWidth: 50 },
+      3: { cellWidth: 40, halign: 'right' }
+    },
+    margin: { left: margin, right: margin }
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 8;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(`Total Ventes: ${formatNum(data.totalVentes)} FCFA`, pageWidth - margin, y, { align: 'right' });
+  y += 12;
+
+  // Expenses section
+  if (data.depenses.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('DÉPENSES', margin, y);
+    y += 5;
+
+    autoTable(doc, {
+      head: [['Description', 'Type', 'Montant']],
+      body: data.depenses.map(d => [
+        d.description,
+        d.type,
+        `${formatNum(d.montant)} FCFA`
+      ]),
+      startY: y,
+      theme: 'striped',
+      headStyles: { fillColor: [220, 38, 38], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 8, textColor: [31, 41, 55] },
+      columnStyles: {
+        0: { cellWidth: 90 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 40, halign: 'right' }
+      },
+      margin: { left: margin, right: margin }
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(`Total Dépenses: ${formatNum(data.totalDepenses)} FCFA`, pageWidth - margin, y, { align: 'right' });
+    y += 12;
+  }
+
+  // Versements section
+  if (data.versements.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('VERSEMENTS', margin, y);
+    y += 5;
+
+    autoTable(doc, {
+      head: [['Caissier', 'Montant']],
+      body: data.versements.map(v => [
+        v.nomCaissier,
+        `${formatNum(v.montant)} FCFA`
+      ]),
+      startY: y,
+      theme: 'striped',
+      headStyles: { fillColor: [5, 150, 105], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 8, textColor: [31, 41, 55] },
+      columnStyles: {
+        0: { cellWidth: 120 },
+        1: { cellWidth: 50, halign: 'right' }
+      },
+      margin: { left: margin, right: margin }
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(`Total Versements: ${formatNum(data.totalVersements)} FCFA`, pageWidth - margin, y, { align: 'right' });
+    y += 15;
+  }
+
+  // Summary box
+  y = Math.max(y, 250);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('RÉSUMÉ FINANCIER', margin, y);
+  y += 8;
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+
+  const summaryLines = [
+    { label: 'Total Ventes', value: data.totalVentes, color: [22, 163, 74] },
+    { label: 'Marge Brute', value: data.margeBrute, color: [37, 99, 235] },
+    { label: 'Dépenses', value: -data.totalDepenses, color: [220, 38, 38] },
+    { label: 'Versements', value: data.totalVersements, color: [5, 150, 105] },
+  ];
+
+  for (const line of summaryLines) {
+    doc.setTextColor(75, 85, 99);
+    doc.text(line.label, margin, y);
+    doc.setTextColor(...line.color);
+    doc.text(`${line.value >= 0 ? '' : '-'}${formatNum(Math.abs(line.value))} FCFA`, pageWidth - margin, y, { align: 'right' });
+    y += 7;
+  }
+
+  y += 3;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  if (data.beneficeNet >= 0) {
+    doc.setTextColor(22, 163, 74);
+  } else {
+    doc.setTextColor(220, 38, 38);
+  }
+  doc.text('BÉNÉFICE NET', margin, y);
+  doc.text(`${formatNum(data.beneficeNet)} FCFA`, pageWidth - margin, y, { align: 'right' });
+
+  // Footer
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(156, 163, 175);
+  doc.text(`Document généré le ${data.date} à ${new Date().toLocaleTimeString('fr-FR')}`, margin, 285);
+  doc.text('GOBEX - Clôture de Caisse', pageWidth / 2, 285, { align: 'center' });
+
+  doc.save(`Cloture_Caisse_${new Date().toISOString().split('T')[0]}.pdf`);
+};

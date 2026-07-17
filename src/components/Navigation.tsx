@@ -1,21 +1,8 @@
 import React from 'react';
 import { User } from '../types';
-import { 
-  Home, 
-  ShoppingCart, 
-  TrendingUp, 
-  Package, 
-  BarChart3, 
-  Shield, 
-  LogOut,
-  Building,
-  Package2,
-  DollarSign,
-  Settings,
-  AlertTriangle,
-  Key
-} from 'lucide-react';
+import { Chrome as Home, ShoppingCart, TrendingUp, Package, ChartBar as BarChart3, Shield, LogOut, Building, Package2, DollarSign, Settings, TriangleAlert as AlertTriangle, Key, Users } from 'lucide-react';
 import SyncStatusIndicator from './SyncStatusIndicator';
+import NotificationCenter, { GlobalSearch } from './NotificationCenter';
 
 interface NavigationProps {
   user: User;
@@ -38,6 +25,7 @@ const Navigation: React.FC<NavigationProps> = ({
     { id: 'ventes', label: 'Ventes', icon: TrendingUp },
     { id: 'stocks', label: 'Stocks', icon: Package },
     { id: 'emballages', label: 'Emballages', icon: Package2 },
+    { id: 'clients', label: 'Clients', icon: Users },
     { id: 'depenses', label: 'Dépenses', icon: DollarSign },
     { id: 'rapports', label: 'Rapports', icon: BarChart3 },
     { id: 'parametres', label: 'Paramètres', icon: Settings },
@@ -118,6 +106,12 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
 
           <div className="flex items-center space-x-4">
+            <GlobalSearch onNavigate={handleModuleChange} />
+            <NotificationCenter
+              onNavigate={handleModuleChange}
+              licenseDaysRemaining={licenseInfo?.daysRemaining}
+              licenseExpired={licenseInfo?.isExpired}
+            />
             <SyncStatusIndicator user={user} />
 
             {/* Affichage des informations de licence */}
@@ -174,7 +168,7 @@ const Navigation: React.FC<NavigationProps> = ({
       <div className="lg:hidden border-t border-gray-200 bg-gray-50">
         <div className="px-4 py-2">
           <div className="flex space-x-1 overflow-x-auto">
-            {menuItems.slice(0, 6).map((item) => {
+            {menuItems.slice(0, 7).map((item) => {
               const Icon = item.icon;
               const isDisabled = licenseExpired && user.type !== 'Propriétaire' && item.id !== 'dashboard';
               return (

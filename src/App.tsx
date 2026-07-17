@@ -10,6 +10,7 @@ import LicencesModule from './components/LicencesModule';
 import EmballagesModule from './components/EmbballagesModule';
 import DepensesModule from './components/DepensesModule';
 import ParametresModule from './components/ParametresModule';
+import ClientsModule from './components/ClientsModule';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { User, UserType } from './types';
 import { checkLicenseExpiration, checkUserLicenseAccess } from './utils/dataService';
@@ -220,6 +221,8 @@ function App() {
         return <EmballagesModule user={currentUser} />;
       case 'depenses':
         return <DepensesModule user={currentUser} />;
+      case 'clients':
+        return <ClientsModule user={currentUser} />;
       case 'parametres':
         return <ParametresModule user={currentUser} />;
       default:

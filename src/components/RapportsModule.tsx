@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
-import { BarChart3, TrendingUp, DollarSign, Download, Calendar, Percent } from 'lucide-react';
+import { ChartBar as BarChart3, TrendingUp, DollarSign, Download, Calendar, Percent } from 'lucide-react';
 import { getSales, getPurchases, getProducts, getMultiPurchases, getExpenses } from '../utils/dataService';
 
 interface RapportsModuleProps {
@@ -156,12 +156,12 @@ Bénéfice Net: ${reportData.benefice.toLocaleString()} FCFA
 ROI: ${reportData.roi.toFixed(2)}%
 
 === TOP PRODUITS ===
-${reportData.topProduits.map((p, i) => 
+${reportData.topProduits.map((p, i) =>
   `${i + 1}. ${p.nom}: ${p.quantite} vendus - ${p.revenus.toLocaleString()} FCFA (Marge: ${p.margePourcentage.toFixed(1)}%)`
 ).join('\n')}
 
 === ALERTES STOCK ===
-${reportData.alertesStock.map(p => 
+${reportData.alertesStock.map(p =>
   `- ${p.nom}: ${p.stockActuel} restants (seuil: ${p.seuilAlerte})`
 ).join('\n')}
     `;
@@ -175,6 +175,70 @@ ${reportData.alertesStock.map(p =>
     window.URL.revokeObjectURL(url);
   };
 
+  const downloadCSV = (filename: string, headers: string[], rows: (string | number)[][]) => {
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => {
+        const str = String(cell);
+        return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+      }).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportSalesCSV = async () => {
+    const sales = await getSales();
+    const filtered = sales.filter(s => s.dateVente >= dateRange.debut && s.dateVente <= dateRange.fin);
+    downloadCSV(
+      `ventes_${dateRange.debut}_${dateRange.fin}.csv`,
+      ['Date', 'Client', 'Produit', 'Quantite', 'Prix Unitaire', 'Total', 'Facture'],
+      filtered.map(s => [s.dateVente, s.client, s.produitNom, s.quantite, s.prixUnitaire, s.total, s.numeroFacture || ''])
+    );
+  };
+
+  const exportPurchasesCSV = async () => {
+    const multiPurchases = await getMultiPurchases();
+    const filtered = multiPurchases.filter(p => p.dateAchat >= dateRange.debut && p.dateAchat <= dateRange.fin);
+    downloadCSV(
+      `achats_${dateRange.debut}_${dateRange.fin}.csv`,
+      ['Date', 'Fournisseur', 'Commande', 'Articles', 'Total Unites', 'Total'],
+      filtered.map(p => [
+        p.dateAchat,
+        p.fournisseur,
+        p.numeroCommande,
+        p.items.length,
+        p.items.reduce((sum, i) => sum + i.quantite, 0),
+        p.totalGeneral
+      ])
+    );
+  };
+
+  const exportExpensesCSV = async () => {
+    const expenses = await getExpenses();
+    const filtered = expenses.filter(e => e.date >= dateRange.debut && e.date <= dateRange.fin);
+    downloadCSV(
+      `depenses_${dateRange.debut}_${dateRange.fin}.csv`,
+      ['Date', 'Description', 'Type', 'Categorie', 'Destinataire', 'Montant'],
+      filtered.map(e => [e.date, e.description, e.type, e.categorie, e.destinataire, e.montant])
+    );
+  };
+
+  const exportStockCSV = async () => {
+    const products = await getProducts();
+    downloadCSV(
+      `stock_${new Date().toISOString().split('T')[0]}.csv`,
+      ['Produit', 'Categorie', 'Stock', 'Prix Achat', 'Prix Vente', 'Valeur Stock', 'Seuil Alert'],
+      products.map(p => [p.nom, p.categorie, p.stockActuel, p.prixAchat, p.prixVente, p.stockActuel * p.prixAchat, p.seuilAlerte || ''])
+    );
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
@@ -182,13 +246,43 @@ ${reportData.alertesStock.map(p =>
           <h1 className="text-3xl font-bold text-gray-900">Rapports et Analyses</h1>
           <p className="text-gray-600 mt-2">Analysez vos performances commerciales et rentabilité</p>
         </div>
-        <button
-          onClick={exportReport}
-          className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-        >
-          <Download className="h-5 w-5" />
-          <span>Exporter</span>
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={exportReport}
+            className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+          >
+            <Download className="h-5 w-5" />
+            <span>Rapport TXT</span>
+          </button>
+          <button
+            onClick={exportSalesCSV}
+            className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-sm"
+          >
+            <Download className="h-4 w-4" />
+            <span>Ventes CSV</span>
+          </button>
+          <button
+            onClick={exportPurchasesCSV}
+            className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 text-sm"
+          >
+            <Download className="h-4 w-4" />
+            <span>Achats CSV</span>
+          </button>
+          <button
+            onClick={exportExpensesCSV}
+            className="bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 text-sm"
+          >
+            <Download className="h-4 w-4" />
+            <span>Dépenses CSV</span>
+          </button>
+          <button
+            onClick={exportStockCSV}
+            className="bg-amber-600 text-white px-4 py-3 rounded-lg hover:bg-amber-700 transition-colors flex items-center space-x-2 text-sm"
+          >
+            <Download className="h-4 w-4" />
+            <span>Stock CSV</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">

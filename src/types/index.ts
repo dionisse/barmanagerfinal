@@ -204,3 +204,23 @@ export interface StockSalesCalculation {
   createdAt: string;
   createdBy: string;
 }
+
+export interface Client {
+  id: string;
+  nom: string;
+  telephone: string;
+  adresse: string;
+  soldeDette: number;
+  notes: string;
+  dateCreation: string;
+}
+
+export interface Supplier {
+  id: string;
+  nom: string;
+  telephone: string;
+  adresse: string;
+  contactPersonne: string;
+  notes: string;
+  dateCreation: string;
+}

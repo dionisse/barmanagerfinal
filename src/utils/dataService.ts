@@ -1,4 +1,4 @@
-import { Product, Purchase, Sale, DashboardStats, MultiPurchase, Packaging, PackagingPurchase, Expense, License, InventoryRecord, Settings, UserLot, StockSalesCalculation, Versement } from '../types';
+import { Product, Purchase, Sale, DashboardStats, MultiPurchase, Packaging, PackagingPurchase, Expense, License, InventoryRecord, Settings, UserLot, StockSalesCalculation, Versement, Client, Supplier } from '../types';
 import { supabaseService } from './supabaseService';
 import { indexedDBService } from './indexedDBService';
 import { enhancedSyncService } from './enhancedSyncService';
@@ -934,4 +934,44 @@ export const recalculateStockFromPurchases = async (): Promise<{ success: boolea
       message: `Erreur lors du recalcul du stock: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
     };
   }
+};
+
+// Clients
+export const getClients = async (): Promise<Client[]> => {
+  return await indexedDBService.getAllData<Client>('clients');
+};
+
+export const addClient = async (client: Client): Promise<void> => {
+  await indexedDBService.saveData('clients', client);
+  triggerSync();
+};
+
+export const updateClient = async (client: Client): Promise<void> => {
+  await indexedDBService.saveData('clients', client);
+  triggerSync();
+};
+
+export const deleteClient = async (clientId: string): Promise<void> => {
+  await indexedDBService.deleteData('clients', clientId);
+  triggerSync();
+};
+
+// Suppliers
+export const getSuppliers = async (): Promise<Supplier[]> => {
+  return await indexedDBService.getAllData<Supplier>('suppliers');
+};
+
+export const addSupplier = async (supplier: Supplier): Promise<void> => {
+  await indexedDBService.saveData('suppliers', supplier);
+  triggerSync();
+};
+
+export const updateSupplier = async (supplier: Supplier): Promise<void> => {
+  await indexedDBService.saveData('suppliers', supplier);
+  triggerSync();
+};
+
+export const deleteSupplier = async (supplierId: string): Promise<void> => {
+  await indexedDBService.deleteData('suppliers', supplierId);
+  triggerSync();
 };
