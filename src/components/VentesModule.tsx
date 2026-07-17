@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Sale, Product, StockSalesCalculation } from '../types';
-import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, Edit, AlertTriangle, CheckCircle, XCircle, Calculator, Download } from 'lucide-react';
+import { Plus, Search, Filter, Receipt, TrendingUp, Trash2, FileText, ShoppingCart, CreditCard as Edit, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Circle as XCircle, Calculator, Download } from 'lucide-react';
 import { getSales, getProducts, addSale, updateProduct, updateSale, deleteSale, getStockSalesCalculations, addStockSalesCalculation, deleteStockSalesCalculation, getPurchases, getMultiPurchases } from '../utils/dataService';
 import { generateInvoicePDF, autoGenerateSimpleInvoice, generateModernSaleInvoice } from '../utils/pdfService';
 import { emecefService } from '../utils/emecefService';
@@ -543,6 +543,138 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
     } catch (error) {
       console.error('Erreur lors de l\'enregistrement:', error);
       alert('Erreur lors de l\'enregistrement des calculs');
+    }
+  };
+
+  const getSalesEligibleRows = (): ProductRow[] =>
+    productRows.filter(row =>
+      row.initialStock !== '' && row.finalStock !== '' && row.quantitySold > 0
+    );
+
+  const getEstimatedSalesTotal = (): number =>
+    getSalesEligibleRows().reduce((sum, row) => {
+      const product = products.find(p => p.id === row.productId);
+      return sum + (product ? product.prixVente * row.quantitySold : 0);
+    }, 0);
+
+  const realizeSalesFromStockCalc = async () => {
+    const filledRows = productRows.filter(row =>
+      row.initialStock !== '' && row.finalStock !== ''
+    );
+
+    if (filledRows.length === 0) {
+      alert('Veuillez remplir au moins une ligne de produit');
+      return;
+    }
+
+    const salesRows = getSalesEligibleRows();
+
+    if (salesRows.length === 0) {
+      alert('Aucune quantité vendue positive à enregistrer. Vérifiez vos stocks.');
+      return;
+    }
+
+    const totalQuantity = salesRows.reduce((sum, row) => sum + row.quantitySold, 0);
+    const estimatedTotal = getEstimatedSalesTotal();
+
+    if (!window.confirm(
+      `Réaliser les ventes via le POS ?\n\n` +
+      `${salesRows.length} produit(s) — ${totalQuantity} unité(s) vendue(s)\n` +
+      `Total estimé: ${estimatedTotal.toLocaleString()} FCFA\n\n` +
+      `Les ventes seront enregistrées au prix de vente actuel de chaque produit.\n` +
+      `Le stock de chaque produit sera ajusté au stock final saisi.`
+    )) {
+      return;
+    }
+
+    try {
+      const date = new Date().toISOString().split('T')[0];
+      const invoiceNumber = `FAC-${Date.now()}`;
+      const clientName = 'Vente comptoir (calcul stock)';
+      let totalAmount = 0;
+
+      for (const row of filledRows) {
+        const newCalculation: StockSalesCalculation = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          date: date,
+          periodStart: bulkPeriod.periodStart,
+          periodEnd: bulkPeriod.periodEnd,
+          productId: row.productId,
+          productName: row.productName,
+          initialStock: parseInt(row.initialStock),
+          finalStock: parseInt(row.finalStock),
+          stockEntry: parseInt(row.stockEntry || '0'),
+          damaged: parseInt(row.damaged || '0'),
+          broken: parseInt(row.broken || '0'),
+          leaking: parseInt(row.leaking || '0'),
+          quantitySold: row.quantitySold,
+          notes: '',
+          createdAt: new Date().toISOString(),
+          createdBy: user.username
+        };
+        await addStockSalesCalculation(newCalculation);
+      }
+
+      for (const row of salesRows) {
+        const product = products.find(p => p.id === row.productId);
+        if (!product) continue;
+
+        const saleTotal = product.prixVente * row.quantitySold;
+        totalAmount += saleTotal;
+
+        const newSale: Sale = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          dateVente: date,
+          client: clientName,
+          produitId: row.productId,
+          produitNom: row.productName,
+          quantite: row.quantitySold,
+          prixUnitaire: product.prixVente,
+          total: saleTotal,
+          numeroFacture: invoiceNumber
+        };
+        await addSale(newSale);
+
+        const updatedProduct = {
+          ...product,
+          stockActuel: parseInt(row.finalStock)
+        };
+        await updateProduct(updatedProduct);
+      }
+
+      const cartItems: CartItem[] = salesRows.map(row => {
+        const product = products.find(p => p.id === row.productId)!;
+        return {
+          produitId: row.productId,
+          produitNom: row.productName,
+          prixUnitaire: product.prixVente,
+          quantite: row.quantitySold,
+          total: product.prixVente * row.quantitySold
+        };
+      });
+
+      generateModernSaleInvoice({
+        invoiceNumber: invoiceNumber,
+        client: clientName,
+        items: cartItems,
+        total: totalAmount
+      }).catch(error => console.error('Erreur lors de la génération du PDF:', error));
+
+      alert(
+        `Ventes réalisées avec succès !\n\n` +
+        `${salesRows.length} vente(s) enregistrée(s)\n` +
+        `Total: ${totalAmount.toLocaleString()} FCFA\n` +
+        `Facture: ${invoiceNumber}\n\n` +
+        `Les stocks ont été ajustés selon l'inventaire final.`
+      );
+
+      initializeProductRows();
+      setShowStockCalcForm(false);
+      loadData();
+      window.dispatchEvent(new CustomEvent('stockUpdated'));
+    } catch (error) {
+      console.error('Erreur lors de la réalisation des ventes:', error);
+      alert('Erreur lors de la réalisation des ventes');
     }
   };
 
@@ -1175,29 +1307,57 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
           </div>
 
           <div className="p-6 border-t border-gray-200 bg-gray-50">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
               <div className="text-sm text-gray-600">
                 <p>Remplissez les lignes des produits pour lesquels vous souhaitez calculer les ventes.</p>
                 <p className="mt-1">Les champs vides seront ignorés lors de l'enregistrement.</p>
               </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => {
-                    setShowStockCalcForm(false);
-                    initializeProductRows();
-                  }}
-                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleBulkStockCalcSubmit}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-                >
-                  <Calculator className="h-4 w-4" />
-                  <span>Enregistrer les Calculs</span>
-                </button>
+            </div>
+
+            {getSalesEligibleRows().length > 0 && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <ShoppingCart className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">
+                      {getSalesEligibleRows().length} produit(s) avec quantité vendue
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-blue-600">Total estimé</span>
+                    <p className="text-lg font-bold text-blue-900">
+                      {getEstimatedSalesTotal().toLocaleString()} FCFA
+                    </p>
+                  </div>
+                </div>
               </div>
+            )}
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowStockCalcForm(false);
+                  initializeProductRows();
+                }}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleBulkStockCalcSubmit}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                <Calculator className="h-4 w-4" />
+                <span>Enregistrer les Calculs</span>
+              </button>
+              <button
+                onClick={realizeSalesFromStockCalc}
+                disabled={getSalesEligibleRows().length === 0}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                <span>Enregistrer et Réaliser les Ventes</span>
+              </button>
             </div>
           </div>
         </div>
