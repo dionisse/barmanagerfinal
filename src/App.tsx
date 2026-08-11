@@ -259,7 +259,7 @@ function App() {
         onLogout={handleLogout}
         licenseExpired={licenseExpired}
       />
-      <div className="pt-16">
+      <div className="pt-28 md:pt-[104px]">
         {renderModule()}
       </div>
       <PWAInstallPrompt />

@@ -99,47 +99,21 @@ const Navigation: React.FC<NavigationProps> = ({
   return (
     <>
       <nav className="bg-white shadow-lg border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
-        <div className="w-full px-2 sm:px-4 lg:px-5">
-          <div className="flex items-center justify-between gap-2 h-16">
-            {/* Logo + Desktop menu */}
-            <div className="flex min-w-0 flex-1 items-center space-x-2 lg:space-x-4">
-              <div className="flex items-center space-x-3">
-                <Building className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
-                <div>
-                  <h1 className="text-lg sm:text-xl font-bold text-gray-900">GOBEX</h1>
-                  <p className="text-xs text-gray-500 hidden sm:block">Gestion de Bar</p>
-                </div>
-              </div>
-
-              <div className="hidden lg:flex min-w-0 items-center space-x-0.5">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = currentModule === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleModuleChange(item.id)}
-                      disabled={isDisabled(item.id)}
-                      title={item.label}
-                      className={`flex items-center space-x-1.5 px-2 xl:px-3 py-2 rounded-lg transition-all duration-200 whitespace-nowrap ${
-                        isActive
-                          ? 'bg-blue-100 text-blue-700 shadow-sm'
-                          : isDisabled(item.id)
-                          ? 'text-gray-400 cursor-not-allowed'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 flex-shrink-0" />
-                      <span className="font-medium text-sm hidden xl:inline">{item.label}</span>
-                    </button>
-                  );
-                })}
+        {/* Row 1: logo + right-side controls */}
+        <div className="w-full px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center justify-between gap-2 h-14">
+            {/* Logo */}
+            <div className="flex items-center space-x-3 flex-shrink-0">
+              <Building className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">GOBEX</h1>
+                <p className="text-xs text-gray-500 hidden sm:block">Gestion de Bar</p>
               </div>
             </div>
 
             {/* Right controls */}
-            <div className="flex shrink-0 items-center space-x-1 lg:space-x-2">
-              <div className="hidden xl:block">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="hidden md:block">
                 <GlobalSearch onNavigate={handleModuleChange} />
               </div>
               <NotificationCenter
@@ -147,66 +121,82 @@ const Navigation: React.FC<NavigationProps> = ({
                 licenseDaysRemaining={licenseInfo?.daysRemaining}
                 licenseExpired={licenseInfo?.isExpired}
               />
-              <div className="hidden xl:block">
+              <div className="hidden md:block">
                 <SyncStatusIndicator user={user} />
               </div>
 
               {licenseInfo && (
-                <div className={`hidden 2xl:flex items-center space-x-1 px-2 py-1 rounded-lg ${
+                <div className={`hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg ${
                   licenseInfo.isExpired
                     ? 'bg-red-100 text-red-700'
                     : licenseInfo.isExpiring
                     ? 'bg-amber-100 text-amber-700'
                     : 'bg-green-100 text-green-700'
                 }`}>
-                  <Key className="h-4 w-4" />
+                  <Key className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium whitespace-nowrap">
                     {licenseInfo.type} - {
                       licenseInfo.isExpired
                         ? 'Expirée'
-                        : `${licenseInfo.daysRemaining}j restants`
+                        : `${licenseInfo.daysRemaining}j`
                     }
                   </span>
                 </div>
               )}
 
-              {licenseExpired && user.type !== 'Propriétaire' && (
-                <div className="hidden 2xl:flex items-center space-x-1 px-2 py-1 bg-red-100 text-red-700 rounded-lg">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="text-xs font-medium whitespace-nowrap">Licence Expirée</span>
-                </div>
-              )}
-
-              <div className="text-right hidden 2xl:block">
-                <p className="text-sm font-medium text-gray-900">{user.username}</p>
-                <div className="flex items-center space-x-1">
-                  <p className="text-xs text-gray-500">{user.type}</p>
-                  {user.type !== 'Propriétaire' && licenseInfo && (
-                    <>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-blue-600">{licenseInfo.type}</span>
-                    </>
-                  )}
-                </div>
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-900 leading-tight">{user.username}</p>
+                <p className="text-xs text-gray-500 leading-tight">{user.type}</p>
               </div>
 
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-1 px-2 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                className="flex items-center space-x-1.5 px-2.5 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors duration-200"
                 title="Déconnexion"
               >
                 <LogOut className="h-4 w-4" />
-                <span className="font-medium hidden xl:inline">Déconnexion</span>
+                <span className="font-medium text-sm hidden sm:inline">Déconnexion</span>
               </button>
 
-              {/* Hamburger - below lg only */}
+              {/* Hamburger - mobile only */}
               <button
                 onClick={() => setMobileOpen(true)}
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
+                className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
                 aria-label="Ouvrir le menu"
               >
                 <Menu className="h-6 w-6" />
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: menu items (desktop/tablet) */}
+        <div className="hidden md:block border-t border-gray-100 bg-gray-50">
+          <div className="w-full px-3 lg:px-6">
+            <div className="flex items-center gap-1 py-1.5 overflow-x-auto scrollbar-thin">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentModule === item.id;
+                const disabled = isDisabled(item.id);
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleModuleChange(item.id)}
+                    disabled={disabled}
+                    title={item.label}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                      isActive
+                        ? 'bg-blue-100 text-blue-700 shadow-sm'
+                        : disabled
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="font-medium text-sm">{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
