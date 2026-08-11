@@ -166,11 +166,6 @@ const Navigation: React.FC<NavigationProps> = ({
         <div className="hidden md:block border-t border-gray-100 bg-gray-50">
           <div className="w-full px-3 lg:px-6">
             <div className="flex items-center gap-3 py-1.5">
-              {/* Search - left */}
-              <div className="flex-shrink-0">
-                <GlobalSearch onNavigate={handleModuleChange} />
-              </div>
-
               {/* Centered menu */}
               <div className="flex-1 flex justify-center overflow-x-auto scrollbar-thin">
                 <div className="flex items-center gap-1">
@@ -200,13 +195,14 @@ const Navigation: React.FC<NavigationProps> = ({
                 </div>
               </div>
 
-              {/* Notifications - right */}
-              <div className="flex-shrink-0">
+              {/* Notifications + Search - right */}
+              <div className="flex-shrink-0 flex items-center gap-2">
                 <NotificationCenter
                   onNavigate={handleModuleChange}
                   licenseDaysRemaining={licenseInfo?.daysRemaining}
                   licenseExpired={licenseInfo?.isExpired}
                 />
+                <GlobalSearch onNavigate={handleModuleChange} />
               </div>
             </div>
           </div>
