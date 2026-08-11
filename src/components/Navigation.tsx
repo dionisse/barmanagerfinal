@@ -114,14 +114,6 @@ const Navigation: React.FC<NavigationProps> = ({
             {/* Right controls */}
             <div className="flex items-center space-x-2 sm:space-x-3">
               <div className="hidden md:block">
-                <GlobalSearch onNavigate={handleModuleChange} />
-              </div>
-              <NotificationCenter
-                onNavigate={handleModuleChange}
-                licenseDaysRemaining={licenseInfo?.daysRemaining}
-                licenseExpired={licenseInfo?.isExpired}
-              />
-              <div className="hidden md:block">
                 <SyncStatusIndicator user={user} />
               </div>
 
@@ -170,33 +162,52 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
 
-        {/* Row 2: menu items (desktop/tablet) */}
+        {/* Row 2: search + centered menu + notifications (desktop/tablet) */}
         <div className="hidden md:block border-t border-gray-100 bg-gray-50">
           <div className="w-full px-3 lg:px-6">
-            <div className="flex items-center gap-1 py-1.5 overflow-x-auto scrollbar-thin">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentModule === item.id;
-                const disabled = isDisabled(item.id);
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleModuleChange(item.id)}
-                    disabled={disabled}
-                    title={item.label}
-                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                      isActive
-                        ? 'bg-blue-100 text-blue-700 shadow-sm'
-                        : disabled
-                        ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="font-medium text-sm">{item.label}</span>
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-3 py-1.5">
+              {/* Search - left */}
+              <div className="flex-shrink-0">
+                <GlobalSearch onNavigate={handleModuleChange} />
+              </div>
+
+              {/* Centered menu */}
+              <div className="flex-1 flex justify-center overflow-x-auto scrollbar-thin">
+                <div className="flex items-center gap-1">
+                  {menuItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = currentModule === item.id;
+                    const disabled = isDisabled(item.id);
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleModuleChange(item.id)}
+                        disabled={disabled}
+                        title={item.label}
+                        className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                          isActive
+                            ? 'bg-blue-100 text-blue-700 shadow-sm'
+                            : disabled
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 flex-shrink-0" />
+                        <span className="font-medium text-sm">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Notifications - right */}
+              <div className="flex-shrink-0">
+                <NotificationCenter
+                  onNavigate={handleModuleChange}
+                  licenseDaysRemaining={licenseInfo?.daysRemaining}
+                  licenseExpired={licenseInfo?.isExpired}
+                />
+              </div>
             </div>
           </div>
         </div>
