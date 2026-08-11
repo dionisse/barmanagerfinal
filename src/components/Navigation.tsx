@@ -99,10 +99,10 @@ const Navigation: React.FC<NavigationProps> = ({
   return (
     <>
       <nav className="bg-white shadow-lg border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+        <div className="w-full px-2 sm:px-4 lg:px-5">
+          <div className="flex items-center justify-between gap-2 h-16">
             {/* Logo + Desktop menu */}
-            <div className="flex items-center space-x-2 sm:space-x-8">
+            <div className="flex min-w-0 flex-1 items-center space-x-2 lg:space-x-4">
               <div className="flex items-center space-x-3">
                 <Building className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
                 <div>
@@ -111,7 +111,7 @@ const Navigation: React.FC<NavigationProps> = ({
                 </div>
               </div>
 
-              <div className="hidden lg:flex items-center space-x-0.5">
+              <div className="hidden lg:flex min-w-0 items-center space-x-0.5">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentModule === item.id;
@@ -138,7 +138,7 @@ const Navigation: React.FC<NavigationProps> = ({
             </div>
 
             {/* Right controls */}
-            <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="flex shrink-0 items-center space-x-1 lg:space-x-2">
               <div className="hidden xl:block">
                 <GlobalSearch onNavigate={handleModuleChange} />
               </div>
@@ -152,7 +152,7 @@ const Navigation: React.FC<NavigationProps> = ({
               </div>
 
               {licenseInfo && (
-                <div className={`hidden 2xl:flex items-center space-x-2 px-3 py-1 rounded-lg ${
+                <div className={`hidden 2xl:flex items-center space-x-1 px-2 py-1 rounded-lg ${
                   licenseInfo.isExpired
                     ? 'bg-red-100 text-red-700'
                     : licenseInfo.isExpiring
@@ -160,7 +160,7 @@ const Navigation: React.FC<NavigationProps> = ({
                     : 'bg-green-100 text-green-700'
                 }`}>
                   <Key className="h-4 w-4" />
-                  <span className="text-sm font-medium">
+                  <span className="text-xs font-medium whitespace-nowrap">
                     {licenseInfo.type} - {
                       licenseInfo.isExpired
                         ? 'Expirée'
@@ -171,9 +171,9 @@ const Navigation: React.FC<NavigationProps> = ({
               )}
 
               {licenseExpired && user.type !== 'Propriétaire' && (
-                <div className="hidden 2xl:flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-700 rounded-lg">
+                <div className="hidden 2xl:flex items-center space-x-1 px-2 py-1 bg-red-100 text-red-700 rounded-lg">
                   <AlertTriangle className="h-4 w-4" />
-                  <span className="text-sm font-medium">Licence Expirée</span>
+                  <span className="text-xs font-medium whitespace-nowrap">Licence Expirée</span>
                 </div>
               )}
 
@@ -192,7 +192,7 @@ const Navigation: React.FC<NavigationProps> = ({
 
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-2 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                className="flex items-center space-x-1 px-2 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors duration-200"
                 title="Déconnexion"
               >
                 <LogOut className="h-4 w-4" />
