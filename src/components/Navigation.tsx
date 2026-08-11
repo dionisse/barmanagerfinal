@@ -111,24 +111,26 @@ const Navigation: React.FC<NavigationProps> = ({
                 </div>
               </div>
 
-              <div className="hidden lg:flex items-center space-x-1">
+              <div className="hidden lg:flex items-center space-x-0.5">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
+                  const isActive = currentModule === item.id;
                   return (
                     <button
                       key={item.id}
                       onClick={() => handleModuleChange(item.id)}
                       disabled={isDisabled(item.id)}
-                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
-                        currentModule === item.id
+                      title={item.label}
+                      className={`flex items-center space-x-1.5 px-2 xl:px-3 py-2 rounded-lg transition-all duration-200 whitespace-nowrap ${
+                        isActive
                           ? 'bg-blue-100 text-blue-700 shadow-sm'
                           : isDisabled(item.id)
                           ? 'text-gray-400 cursor-not-allowed'
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                       }`}
                     >
-                      <Icon className="h-4 w-4" />
-                      <span className="font-medium text-sm">{item.label}</span>
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      <span className="font-medium text-sm hidden xl:inline">{item.label}</span>
                     </button>
                   );
                 })}
@@ -137,7 +139,7 @@ const Navigation: React.FC<NavigationProps> = ({
 
             {/* Right controls */}
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="hidden md:block">
+              <div className="hidden xl:block">
                 <GlobalSearch onNavigate={handleModuleChange} />
               </div>
               <NotificationCenter
@@ -145,12 +147,12 @@ const Navigation: React.FC<NavigationProps> = ({
                 licenseDaysRemaining={licenseInfo?.daysRemaining}
                 licenseExpired={licenseInfo?.isExpired}
               />
-              <div className="hidden sm:block">
+              <div className="hidden xl:block">
                 <SyncStatusIndicator user={user} />
               </div>
 
               {licenseInfo && (
-                <div className={`hidden xl:flex items-center space-x-2 px-3 py-1 rounded-lg ${
+                <div className={`hidden 2xl:flex items-center space-x-2 px-3 py-1 rounded-lg ${
                   licenseInfo.isExpired
                     ? 'bg-red-100 text-red-700'
                     : licenseInfo.isExpiring
@@ -169,13 +171,13 @@ const Navigation: React.FC<NavigationProps> = ({
               )}
 
               {licenseExpired && user.type !== 'Propriétaire' && (
-                <div className="hidden xl:flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-700 rounded-lg">
+                <div className="hidden 2xl:flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-700 rounded-lg">
                   <AlertTriangle className="h-4 w-4" />
                   <span className="text-sm font-medium">Licence Expirée</span>
                 </div>
               )}
 
-              <div className="text-right hidden sm:block">
+              <div className="text-right hidden 2xl:block">
                 <p className="text-sm font-medium text-gray-900">{user.username}</p>
                 <div className="flex items-center space-x-1">
                   <p className="text-xs text-gray-500">{user.type}</p>
@@ -190,14 +192,14 @@ const Navigation: React.FC<NavigationProps> = ({
 
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                className="flex items-center space-x-2 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors duration-200"
                 title="Déconnexion"
               >
                 <LogOut className="h-4 w-4" />
-                <span className="font-medium hidden sm:inline">Déconnexion</span>
+                <span className="font-medium hidden xl:inline">Déconnexion</span>
               </button>
 
-              {/* Hamburger - mobile only */}
+              {/* Hamburger - below lg only */}
               <button
                 onClick={() => setMobileOpen(true)}
                 className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
