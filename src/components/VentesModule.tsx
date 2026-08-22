@@ -1430,34 +1430,34 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Période
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Produit
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Stock Initial
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Stock Final
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Entrée Stock
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Pertes
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Quantité Vendue
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Notes
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -1465,7 +1465,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {stockCalculations.map((calc) => (
                   <tr key={calc.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {new Date(calc.date).toLocaleDateString('fr-FR')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -1476,19 +1476,19 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                         <span className="font-medium">{new Date(calc.periodEnd).toLocaleDateString('fr-FR')}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-medium text-gray-900">
                       {calc.productName}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {calc.initialStock}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {calc.finalStock}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {calc.stockEntry}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       <div className="text-red-600">
                         {calc.damaged + calc.broken + calc.leaking}
                         {(calc.damaged > 0 || calc.broken > 0 || calc.leaking > 0) && (
@@ -1498,13 +1498,13 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-semibold text-green-600">
                       {calc.quantitySold}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                       {calc.notes || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-medium">
                       <button
                         onClick={() => handleDeleteStockCalc(calc.id)}
                         className="text-red-600 hover:text-red-900 p-1 rounded"
@@ -1662,35 +1662,46 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
         </div>
 
         {viewMode === 'detailed' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto lg:overflow-x-visible">
+            <table className="w-full lg:table-fixed">
+              <colgroup>
+                <col className="lg:w-[8%]" />
+                <col className="lg:w-[14%]" />
+                <col className="lg:w-[13%]" />
+                <col className="lg:w-[18%]" />
+                <col className="lg:w-[6%]" />
+                <col className="lg:w-[11%]" />
+                <col className="lg:w-[11%]" />
+                <col className="lg:w-[9%]" />
+                <col className="lg:w-[10%]" />
+              </colgroup>
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     N° Facture
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Client
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Produit
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Quantité
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Prix Unit.
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Total
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     eMecef
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -1698,30 +1709,30 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredSales.map((sale) => (
                   <tr key={sale.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {new Date(sale.dateVente).toLocaleDateString('fr-FR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words">
                       <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
                         {sale.numeroFacture}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-medium text-gray-900">
                       {sale.client}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {sale.produitNom}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {sale.quantite}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {sale.prixUnitaire.toLocaleString()} FCFA
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-semibold text-green-600">
                       {sale.total.toLocaleString()} FCFA
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs">
                       {sale.emecefCode ? (
                         <div className="flex items-center space-x-1">
                           <CheckCircle className="h-4 w-4 text-green-500" />
@@ -1736,7 +1747,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                         <span className="text-gray-400 text-xs">N/A</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-medium">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handleEditSale(sale)}
@@ -1780,29 +1791,38 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
             </table>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto lg:overflow-x-visible">
+            <table className="w-full lg:table-fixed">
+              <colgroup>
+                <col className="lg:w-[10%]" />
+                <col className="lg:w-[15%]" />
+                <col className="lg:w-[15%]" />
+                <col className="lg:w-[28%]" />
+                <col className="lg:w-[13%]" />
+                <col className="lg:w-[9%]" />
+                <col className="lg:w-[10%]" />
+              </colgroup>
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     N° Facture
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Client
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Articles
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Total Facture
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     eMecef
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 lg:px-2 text-left text-xs lg:text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -1810,18 +1830,18 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {groupedInvoices.map((invoice) => (
                   <tr key={invoice.numeroFacture} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs text-gray-900">
                       {new Date(invoice.dateVente).toLocaleDateString('fr-FR')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words">
                       <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
                         {invoice.numeroFacture}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-medium text-gray-900">
                       {invoice.client}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 text-sm lg:text-xs text-gray-900">
                       <div className="space-y-1">
                         {invoice.items.map((item, index) => (
                           <div key={item.id} className="flex items-center space-x-2">
@@ -1834,10 +1854,10 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                         ))}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-bold text-green-600">
                       {invoice.totalFacture.toLocaleString()} FCFA
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs">
                       {invoice.emecefCode ? (
                         <div className="flex items-center space-x-1">
                           <CheckCircle className="h-4 w-4 text-green-500" />
@@ -1852,7 +1872,7 @@ const VentesModule: React.FC<VentesModuleProps> = ({ user }) => {
                         <span className="text-gray-400 text-xs">N/A</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 lg:px-2 lg:py-3 whitespace-nowrap lg:whitespace-normal break-words text-sm lg:text-xs font-medium">
                       <button
                         onClick={() => setViewMode('detailed')}
                         className="text-blue-600 hover:text-blue-900 p-1 rounded flex items-center space-x-1"
