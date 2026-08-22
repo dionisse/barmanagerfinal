@@ -216,6 +216,38 @@
 
 .login-form-head { margin-bottom: 4px; }
 
+.login-form-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.login-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  background: var(--login-surface-2);
+  border: 1px solid var(--login-border);
+  border-radius: var(--login-radius-sm);
+  color: var(--login-text-secondary);
+  font-family: inherit;
+  font-size: .8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--login-transition), color var(--login-transition), border-color var(--login-transition);
+  flex-shrink: 0;
+}
+
+.login-back-btn:hover {
+  background: var(--login-surface-3);
+  color: var(--login-text);
+  border-color: rgba(255,255,255,.15);
+}
+
+.login-back-btn svg { width: 14px; height: 14px; }
+
 .login-form-title {
   font-size: 1.5rem;
   font-weight: 700;

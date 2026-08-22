@@ -4,9 +4,10 @@ import { simpleAuth } from '../utils/simpleAuthService';
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
+  onBackToHome?: () => void;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -83,8 +84,25 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
         <div className="login-form-panel">
           <div className="login-form-head">
-            <h2 className="login-form-title">Connexion</h2>
-            <p className="login-form-sub">Entrez vos identifiants pour continuer.</p>
+            <div className="login-form-head-row">
+              <div>
+                <h2 className="login-form-title">Connexion</h2>
+                <p className="login-form-sub">Entrez vos identifiants pour continuer.</p>
+              </div>
+              {onBackToHome && (
+                <button
+                  type="button"
+                  className="login-back-btn"
+                  onClick={onBackToHome}
+                  aria-label="Retour à l'accueil"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span>Accueil</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit} noValidate>

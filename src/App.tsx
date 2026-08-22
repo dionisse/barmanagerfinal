@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LandingPage from './components/LandingPage';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
 import Navigation from './components/Navigation';
@@ -23,6 +24,7 @@ function App() {
   const [currentModule, setCurrentModule] = useState<string>('dashboard');
   const [licenseExpired, setLicenseExpired] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     // Check for existing session
@@ -242,9 +244,17 @@ function App() {
   }
 
   if (!currentUser) {
+    if (showLogin) {
+      return (
+        <>
+          <LoginForm onLogin={handleLogin} onBackToHome={() => setShowLogin(false)} />
+          <PWAInstallPrompt />
+        </>
+      );
+    }
     return (
       <>
-        <LoginForm onLogin={handleLogin} />
+        <LandingPage onGetStarted={() => setShowLogin(true)} />
         <PWAInstallPrompt />
       </>
     );
