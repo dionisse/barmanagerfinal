@@ -141,7 +141,7 @@ const RapportsModule: React.FC<RapportsModuleProps> = ({ user }) => {
 
   const exportReport = () => {
     const reportContent = `
-RAPPORT GOBEX - ${new Date().toLocaleDateString('fr-FR')}
+RAPPORT AHANDJO - ${new Date().toLocaleDateString('fr-FR')}
 Période: ${new Date(dateRange.debut).toLocaleDateString('fr-FR')} - ${new Date(dateRange.fin).toLocaleDateString('fr-FR')}
 
 === RÉSUMÉ FINANCIER ===
@@ -170,7 +170,7 @@ ${reportData.alertesStock.map(p =>
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rapport-gobex-${new Date().toISOString().split('T')[0]}.txt`;
+    a.download = `rapport-ahandjo-${new Date().toISOString().split('T')[0]}.txt`;
     a.click();
     window.URL.revokeObjectURL(url);
   };

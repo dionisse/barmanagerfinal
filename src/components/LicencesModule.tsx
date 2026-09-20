@@ -453,7 +453,7 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
           <XCircle className="mx-auto h-16 w-16 text-red-600 mb-4" />
           <h2 className="text-2xl font-bold text-red-800 mb-4">Licence Expirée</h2>
           <p className="text-red-700 mb-6">
-            Votre licence GOBEX a expiré. Veuillez contacter le propriétaire pour renouveler votre abonnement.
+            Votre licence AHANDJO a expiré. Veuillez contacter le propriétaire pour renouveler votre abonnement.
           </p>
           <div className="bg-white p-4 rounded-lg border border-red-200">
             <p className="text-sm text-gray-600">
@@ -730,7 +730,7 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Version:</span>
-                <span className="font-semibold">GOBEX v2.0.1</span>
+                <span className="font-semibold">AHANDJO v2.0.1</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Licences Actives:</span>

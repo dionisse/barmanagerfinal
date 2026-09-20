@@ -293,7 +293,7 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Paramètres</h1>
-          <p className="text-gray-600 mt-2">Configurez votre application GOBEX</p>
+          <p className="text-gray-600 mt-2">Configurez votre application AHANDJO</p>
           <p className="text-xs text-gray-500 mt-1">Version 2.0.1</p>
         </div>
         {activeTab !== 'package' && activeTab !== 'diagnostic' && activeTab !== 'support' && activeTab !== 'security' && (
@@ -1103,7 +1103,7 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
         <h3 className="text-lg font-semibold mb-3">Informations Système</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <p className="text-blue-100">Version GOBEX</p>
+            <p className="text-blue-100">Version AHANDJO</p>
             <p className="font-semibold">v2.0.1</p>
           </div>
           <div>

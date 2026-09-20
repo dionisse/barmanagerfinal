@@ -2,6 +2,47 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getSettings } from './dataService';
 
+/* ── Charte AHANDJO « Terra » (identité des documents) ────────── */
+const AHANDJO = {
+  terre: [176, 78, 23] as [number, number, number],        // terre cuite — couleur principale
+  terreVive: [194, 94, 30] as [number, number, number],    // terre cuite vive
+  or: [229, 175, 46] as [number, number, number],          // or
+  orFonce: [147, 85, 22] as [number, number, number],      // or foncé (texte sur fond or pâle)
+  espresso: [36, 23, 17] as [number, number, number],      // brun espresso — texte principal
+  bronze: [103, 74, 50] as [number, number, number],       // bronze espresso — tableaux secondaires
+  texteSecondaire: [107, 91, 76] as [number, number, number],
+  grisChaud: [122, 114, 105] as [number, number, number],
+  grisClair: [169, 162, 154] as [number, number, number],
+  creme: [250, 244, 233] as [number, number, number],      // fond crème
+  cremeSable: [243, 233, 214] as [number, number, number], // sable
+  cremeClair: [253, 250, 244] as [number, number, number], // lignes alternées
+  orPale: [253, 246, 224] as [number, number, number],     // encadrés (eMecef…)
+  bordure: [213, 207, 198] as [number, number, number],
+  vertKente: [47, 107, 69] as [number, number, number],    // vert kente — positif
+  rougeBrique: [192, 54, 43] as [number, number, number],  // rouge brique — négatif
+};
+
+/** Bande kente — signature AHANDJO (or, espresso, terre, vert, crème) */
+const drawKenteStrip = (doc: jsPDF, x: number, y: number, width: number, height: number) => {
+  const segments: { color: [number, number, number]; ratio: number }[] = [
+    { color: AHANDJO.or, ratio: 3 },
+    { color: AHANDJO.espresso, ratio: 1 },
+    { color: AHANDJO.terreVive, ratio: 4 },
+    { color: AHANDJO.espresso, ratio: 1 },
+    { color: AHANDJO.vertKente, ratio: 3 },
+    { color: AHANDJO.espresso, ratio: 1 },
+    { color: AHANDJO.cremeSable, ratio: 2 },
+  ];
+  const total = segments.reduce((sum, s) => sum + s.ratio, 0);
+  let cursor = x;
+  segments.forEach((segment) => {
+    const segWidth = (width * segment.ratio) / total;
+    doc.setFillColor(segment.color[0], segment.color[1], segment.color[2]);
+    doc.rect(cursor, y, segWidth, height, 'F');
+    cursor += segWidth;
+  });
+};
+
 interface InvoiceItem {
   produitNom: string;
   quantite: number;
@@ -44,20 +85,21 @@ declare module 'jspdf' {
 export const generateInvoicePDF = (invoiceData: InvoiceData) => {
   const doc = new jsPDF();
 
-  // Set colors
-  const primaryColor = [59, 130, 246]; // Blue
-  const secondaryColor = [243, 244, 246]; // Light gray
-  const textColor = [31, 41, 55]; // Dark gray
+  // Couleurs — charte AHANDJO « Terra »
+  const primaryColor: [number, number, number] = AHANDJO.terre;        // terre cuite
+  const secondaryColor: [number, number, number] = AHANDJO.cremeSable; // sable
+  const textColor: [number, number, number] = AHANDJO.espresso;        // espresso
 
   // Header with company branding
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, 210, 40, 'F');
+  drawKenteStrip(doc, 0, 40, 210, 1.8);
 
   // Company logo area (using text for now)
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(28);
   doc.setFont('helvetica', 'bold');
-  doc.text('GOBEX', 20, 25);
+  doc.text('AHANDJO', 20, 25);
   
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
@@ -77,12 +119,12 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
   doc.setFont('helvetica', 'normal');
   doc.text('123 Rue de la Paix, Cotonou', 20, 50);
   doc.text('Tél: +229 12 34 56 78', 20, 55);
-  doc.text('Email: contact@gobex.com', 20, 60);
+  doc.text('Email: contact@ahandjo.bj', 20, 60);
 
   // Invoice details box
   doc.setFillColor(...secondaryColor);
   doc.rect(120, 45, 70, 25, 'F');
-  doc.setDrawColor(200, 200, 200);
+  doc.setDrawColor(213, 207, 198);
   doc.rect(120, 45, 70, 25, 'S');
 
   doc.setFontSize(10);
@@ -122,7 +164,7 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
       textColor: textColor
     },
     alternateRowStyles: {
-      fillColor: [249, 250, 251]
+      fillColor: [253, 250, 244]
     },
     columnStyles: {
       0: { cellWidth: 80 },
@@ -153,9 +195,9 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
   // Code eMecef si disponible
   let footerY = finalY + 35;
   if (invoiceData.emecefCode) {
-    doc.setFillColor(240, 240, 240);
+    doc.setFillColor(253, 246, 224);
     doc.rect(20, footerY - 5, 170, 20, 'F');
-    doc.setDrawColor(200, 200, 200);
+    doc.setDrawColor(213, 207, 198);
     doc.rect(20, footerY - 5, 170, 20, 'S');
     
     doc.setFontSize(8);
@@ -168,11 +210,11 @@ export const generateInvoicePDF = (invoiceData: InvoiceData) => {
   }
   
   doc.text('Merci pour votre visite !', 105, footerY, { align: 'center' });
-  doc.text('GOBEX - Système de Gestion de Bar Professionnel', 105, footerY + 10, { align: 'center' });
+  doc.text('AHANDJO — Système de Gestion de Bar Professionnel', 105, footerY + 10, { align: 'center' });
 
   // Terms and conditions
   doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
+  doc.setTextColor(122, 114, 105);
   doc.text('Conditions de paiement: Paiement à réception', 20, footerY + 25);
   doc.text('TVA incluse - Merci de conserver cette facture', 20, footerY + 30);
   
@@ -196,6 +238,9 @@ export const generateSimpleInvoicePDF = async (invoiceData: SimpleInvoiceData) =
   const pageWidth = 80;
   const margin = 5;
   const contentWidth = pageWidth - (margin * 2);
+
+  // Bande kente — signature AHANDJO
+  drawKenteStrip(doc, margin, 4, contentWidth, 1.5);
 
   // Fonction helper pour centrer le texte
   const centerText = (text: string, y: number, fontSize: number = 10) => {
@@ -224,7 +269,7 @@ export const generateSimpleInvoicePDF = async (invoiceData: SimpleInvoiceData) =
 
   // En-tête de l'entreprise
   doc.setFont('helvetica', 'bold');
-  yPosition = centerText(invoiceData.companyInfo?.nom || 'GOBEX BAR', yPosition, 12);
+  yPosition = centerText(invoiceData.companyInfo?.nom || 'AHANDJO BAR', yPosition, 12);
   yPosition += 2;
   
   doc.setFont('helvetica', 'normal');
@@ -321,7 +366,7 @@ export const generateSimpleInvoicePDF = async (invoiceData: SimpleInvoiceData) =
   
   doc.setFont('helvetica', 'normal');
   yPosition = centerText('Merci pour votre visite !', yPosition, 8);
-  yPosition = centerText('GOBEX - Gestion de Bar', yPosition, 6);
+  yPosition = centerText('AHANDJO — Gestion de Bar', yPosition, 6);
   
   if (invoiceData.emecefCode) {
     yPosition += 2;
@@ -395,18 +440,19 @@ export const generateModernSaleInvoice = async (saleData: {
     const margin = 20;
     const contentWidth = pageWidth - (margin * 2);
 
-    doc.setFillColor(245, 247, 250);
+    doc.setFillColor(250, 244, 233);
     doc.rect(0, 0, pageWidth, 60, 'F');
+    drawKenteStrip(doc, 0, 58, pageWidth, 2);
 
-    doc.setTextColor(31, 41, 55);
+    doc.setTextColor(36, 23, 17);
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    const companyName = settings?.entreprise?.nom || 'GOBEX BAR';
+    const companyName = settings?.entreprise?.nom || 'AHANDJO BAR';
     doc.text(companyName, margin, 25);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(75, 85, 99);
+    doc.setTextColor(107, 91, 76);
     let yPos = 35;
     if (settings?.entreprise?.adresse) {
       doc.text(settings.entreprise.adresse, margin, yPos);
@@ -424,7 +470,7 @@ export const generateModernSaleInvoice = async (saleData: {
       doc.text(`NIF: ${settings.fiscalite.nif}`, margin, yPos);
     }
 
-    doc.setFillColor(37, 99, 235);
+    doc.setFillColor(176, 78, 23);
     doc.rect(pageWidth - margin - 60, 15, 60, 30, 'F');
 
     doc.setTextColor(255, 255, 255);
@@ -443,7 +489,7 @@ export const generateModernSaleInvoice = async (saleData: {
     const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
     doc.setFontSize(11);
-    doc.setTextColor(31, 41, 55);
+    doc.setTextColor(36, 23, 17);
     doc.setFont('helvetica', 'bold');
     doc.text('FACTURÉ À', margin, currentY);
     currentY += 7;
@@ -459,7 +505,7 @@ export const generateModernSaleInvoice = async (saleData: {
     doc.text(`${date} à ${time}`, margin + 15, currentY);
     currentY += 15;
 
-    doc.setDrawColor(226, 232, 240);
+    doc.setDrawColor(213, 207, 198);
     doc.setLineWidth(0.5);
     doc.line(margin, currentY, pageWidth - margin, currentY);
     currentY += 10;
@@ -478,15 +524,15 @@ export const generateModernSaleInvoice = async (saleData: {
       startY: currentY,
       theme: 'plain',
       headStyles: {
-        fillColor: [249, 250, 251],
-        textColor: [75, 85, 99],
+        fillColor: AHANDJO.cremeSable,
+        textColor: AHANDJO.texteSecondaire,
         fontStyle: 'bold',
         fontSize: 10,
         cellPadding: 5
       },
       bodyStyles: {
         fontSize: 9,
-        textColor: [31, 41, 55],
+        textColor: AHANDJO.espresso,
         cellPadding: 5
       },
       columnStyles: {
@@ -505,7 +551,7 @@ export const generateModernSaleInvoice = async (saleData: {
     const totalBoxWidth = 70;
     const totalBoxHeight = 15;
 
-    doc.setFillColor(37, 99, 235);
+    doc.setFillColor(176, 78, 23);
     doc.roundedRect(totalBoxX, totalBoxY, totalBoxWidth, totalBoxHeight, 3, 3, 'F');
 
     doc.setTextColor(255, 255, 255);
@@ -517,10 +563,10 @@ export const generateModernSaleInvoice = async (saleData: {
     let footerY = finalY + 35;
 
     if (saleData.emecefCode) {
-      doc.setFillColor(254, 243, 199);
+      doc.setFillColor(253, 246, 224);
       doc.roundedRect(margin, footerY, contentWidth, 25, 3, 3, 'F');
 
-      doc.setTextColor(146, 64, 14);
+      doc.setTextColor(147, 85, 22);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.text('CODE eMECEF (DGI BÉNIN)', margin + 5, footerY + 6);
@@ -530,24 +576,24 @@ export const generateModernSaleInvoice = async (saleData: {
       doc.text(saleData.emecefCode, margin + 5, footerY + 13);
 
       doc.setFontSize(7);
-      doc.setTextColor(120, 113, 108);
+      doc.setTextColor(122, 114, 105);
       doc.text('Facture électronique conforme à la réglementation fiscale du Bénin', margin + 5, footerY + 20);
 
       footerY += 35;
     }
 
-    doc.setTextColor(107, 114, 128);
+    doc.setTextColor(122, 114, 105);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text('Merci pour votre confiance !', pageWidth / 2, footerY, { align: 'center' });
 
     doc.setFontSize(7);
-    doc.setTextColor(156, 163, 175);
+    doc.setTextColor(169, 162, 154);
     const bottomY = 280;
     doc.text('Conditions de paiement: Paiement à réception', margin, bottomY);
     doc.text(`Document généré le ${date} à ${time}`, margin, bottomY + 5);
 
-    doc.setDrawColor(226, 232, 240);
+    doc.setDrawColor(213, 207, 198);
     doc.setLineWidth(0.3);
     doc.line(margin, bottomY - 3, pageWidth - margin, bottomY - 3);
 
@@ -566,10 +612,11 @@ export const generateStockReportPDF = (products: any[]) => {
   const doc = new jsPDF();
 
   // Header
+  doc.setTextColor(...AHANDJO.espresso);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('GOBEX - RAPPORT DE STOCK', 20, 30);
-  
+  doc.text('AHANDJO — RAPPORT DE STOCK', 20, 30);
+
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
   doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 20, 45);
@@ -577,6 +624,7 @@ export const generateStockReportPDF = (products: any[]) => {
   // Line separator
   doc.setLineWidth(0.5);
   doc.line(20, 55, 190, 55);
+  drawKenteStrip(doc, 20, 57, 170, 1.5);
 
   // Table headers and data
   const tableHeaders = [['Produit', 'Catégorie', 'Stock', 'Prix Achat', 'Prix Vente', 'Valeur']];
@@ -596,7 +644,7 @@ export const generateStockReportPDF = (products: any[]) => {
     startY: 65,
     theme: 'grid',
     headStyles: {
-      fillColor: [147, 51, 234],
+      fillColor: [103, 74, 50],
       textColor: 255,
       fontStyle: 'bold'
     },
@@ -654,21 +702,22 @@ export const generateDailyClosingPDF = async (data: {
   const formatNum = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
   // Header
-  doc.setFillColor(245, 247, 250);
+  doc.setFillColor(250, 244, 233);
   doc.rect(0, 0, pageWidth, 50, 'F');
+  drawKenteStrip(doc, 0, 50, pageWidth, 1.8);
 
-  doc.setTextColor(31, 41, 55);
+  doc.setTextColor(36, 23, 17);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text(settings?.entreprise?.nom || 'GOBEX BAR', margin, 25);
+  doc.text(settings?.entreprise?.nom || 'AHANDJO BAR', margin, 25);
 
   doc.setFontSize(14);
-  doc.setTextColor(37, 99, 235);
+  doc.setTextColor(176, 78, 23);
   doc.text('CLÔTURE DE CAISSE', pageWidth - margin, 25, { align: 'right' });
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(75, 85, 99);
+  doc.setTextColor(107, 91, 76);
   doc.text(`Date: ${data.date}`, margin, 38);
   doc.text(`Heure: ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 38, { align: 'right' });
 
@@ -677,7 +726,7 @@ export const generateDailyClosingPDF = async (data: {
   // Sales section
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.setTextColor(31, 41, 55);
+  doc.setTextColor(36, 23, 17);
   doc.text('VENTES', margin, y);
   y += 5;
 
@@ -691,8 +740,8 @@ export const generateDailyClosingPDF = async (data: {
     ]),
     startY: y,
     theme: 'striped',
-    headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 9 },
-    bodyStyles: { fontSize: 8, textColor: [31, 41, 55] },
+    headStyles: { fillColor: [176, 78, 23], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 8, textColor: [36, 23, 17] },
     columnStyles: {
       0: { cellWidth: 70 },
       1: { cellWidth: 20, halign: 'center' },
@@ -724,8 +773,8 @@ export const generateDailyClosingPDF = async (data: {
       ]),
       startY: y,
       theme: 'striped',
-      headStyles: { fillColor: [220, 38, 38], textColor: 255, fontSize: 9 },
-      bodyStyles: { fontSize: 8, textColor: [31, 41, 55] },
+      headStyles: { fillColor: [192, 54, 43], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 8, textColor: [36, 23, 17] },
       columnStyles: {
         0: { cellWidth: 90 },
         1: { cellWidth: 40 },
@@ -756,8 +805,8 @@ export const generateDailyClosingPDF = async (data: {
       ]),
       startY: y,
       theme: 'striped',
-      headStyles: { fillColor: [5, 150, 105], textColor: 255, fontSize: 9 },
-      bodyStyles: { fontSize: 8, textColor: [31, 41, 55] },
+      headStyles: { fillColor: [47, 107, 69], textColor: 255, fontSize: 9 },
+      bodyStyles: { fontSize: 8, textColor: [36, 23, 17] },
       columnStyles: {
         0: { cellWidth: 120 },
         1: { cellWidth: 50, halign: 'right' }
@@ -774,7 +823,7 @@ export const generateDailyClosingPDF = async (data: {
 
   // Summary box
   y = Math.max(y, 250);
-  doc.setDrawColor(226, 232, 240);
+  doc.setDrawColor(213, 207, 198);
   doc.setLineWidth(0.5);
   doc.line(margin, y, pageWidth - margin, y);
   y += 10;
@@ -787,15 +836,15 @@ export const generateDailyClosingPDF = async (data: {
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
 
-  const summaryLines = [
-    { label: 'Total Ventes', value: data.totalVentes, color: [22, 163, 74] },
-    { label: 'Marge Brute', value: data.margeBrute, color: [37, 99, 235] },
-    { label: 'Dépenses', value: -data.totalDepenses, color: [220, 38, 38] },
-    { label: 'Versements', value: data.totalVersements, color: [5, 150, 105] },
+  const summaryLines: { label: string; value: number; color: [number, number, number] }[] = [
+    { label: 'Total Ventes', value: data.totalVentes, color: [47, 107, 69] },
+    { label: 'Marge Brute', value: data.margeBrute, color: [176, 78, 23] },
+    { label: 'Dépenses', value: -data.totalDepenses, color: [192, 54, 43] },
+    { label: 'Versements', value: data.totalVersements, color: [47, 107, 69] },
   ];
 
   for (const line of summaryLines) {
-    doc.setTextColor(75, 85, 99);
+    doc.setTextColor(107, 91, 76);
     doc.text(line.label, margin, y);
     doc.setTextColor(...line.color);
     doc.text(`${line.value >= 0 ? '' : '-'}${formatNum(Math.abs(line.value))} FCFA`, pageWidth - margin, y, { align: 'right' });
@@ -803,16 +852,16 @@ export const generateDailyClosingPDF = async (data: {
   }
 
   y += 3;
-  doc.setDrawColor(226, 232, 240);
+  doc.setDrawColor(213, 207, 198);
   doc.line(margin, y, pageWidth - margin, y);
   y += 10;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   if (data.beneficeNet >= 0) {
-    doc.setTextColor(22, 163, 74);
+    doc.setTextColor(47, 107, 69);
   } else {
-    doc.setTextColor(220, 38, 38);
+    doc.setTextColor(192, 54, 43);
   }
   doc.text('BÉNÉFICE NET', margin, y);
   doc.text(`${formatNum(data.beneficeNet)} FCFA`, pageWidth - margin, y, { align: 'right' });
@@ -820,9 +869,9 @@ export const generateDailyClosingPDF = async (data: {
   // Footer
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(156, 163, 175);
+  doc.setTextColor(169, 162, 154);
   doc.text(`Document généré le ${data.date} à ${new Date().toLocaleTimeString('fr-FR')}`, margin, 285);
-  doc.text('GOBEX - Clôture de Caisse', pageWidth / 2, 285, { align: 'center' });
+  doc.text('AHANDJO — Clôture de Caisse', pageWidth / 2, 285, { align: 'center' });
 
   doc.save(`Cloture_Caisse_${new Date().toISOString().split('T')[0]}.pdf`);
 };

@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../types';
 import {
   Chrome as Home, ShoppingCart, TrendingUp, Package, ChartBar as BarChart3,
-  Shield, LogOut, Building, Package2, DollarSign, Settings,
-  TriangleAlert as AlertTriangle, Key, Users, Menu, X
+  Shield, LogOut, Package2, DollarSign, Settings,
+  Key, Users, Menu, X
 } from 'lucide-react';
 import SyncStatusIndicator from './SyncStatusIndicator';
 import NotificationCenter, { GlobalSearch } from './NotificationCenter';
+import { Brand } from './Brand';
 
 interface NavigationProps {
   user: User;
@@ -98,20 +99,17 @@ const Navigation: React.FC<NavigationProps> = ({
 
   return (
     <>
-      <nav className="bg-white shadow-lg border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
-        {/* Row 1: logo + right-side controls */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-cream-50/95 backdrop-blur-md shadow-[0_1px_0_rgba(36,23,17,0.06)]">
+        {/* liseré kente — signature de la marque */}
+        <div className="kente-strip h-[3px]" aria-hidden="true" />
+
+        {/* Row 1: logo + contrôles à droite */}
         <div className="w-full px-3 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between gap-2 h-14">
             {/* Logo */}
-            <div className="flex items-center space-x-3 flex-shrink-0">
-              <Building className="h-7 w-7 sm:h-8 sm:w-8 text-blue-600 flex-shrink-0" />
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold text-gray-900">GOBEX</h1>
-                <p className="text-xs text-gray-500 hidden sm:block">Gestion de Bar</p>
-              </div>
-            </div>
+            <Brand compact className="flex-shrink-0" />
 
-            {/* Right controls */}
+            {/* Contrôles à droite */}
             <div className="flex items-center space-x-2 sm:space-x-3">
               <div className="hidden md:block">
                 <SyncStatusIndicator user={user} />
@@ -136,9 +134,16 @@ const Navigation: React.FC<NavigationProps> = ({
                 </div>
               )}
 
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900 leading-tight">{user.username}</p>
-                <p className="text-xs text-gray-500 leading-tight">{user.type}</p>
+              <div className="hidden sm:flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-clay-500 to-gold-500 flex items-center justify-center flex-shrink-0 shadow-warm">
+                  <span className="text-sm font-bold text-white">
+                    {user.username.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-espresso-900 leading-tight">{user.username}</p>
+                  <p className="text-xs text-espresso-400 leading-tight">{user.type}</p>
+                </div>
               </div>
 
               <button
@@ -150,10 +155,10 @@ const Navigation: React.FC<NavigationProps> = ({
                 <span className="font-medium text-sm hidden sm:inline">Déconnexion</span>
               </button>
 
-              {/* Hamburger - mobile only */}
+              {/* Hamburger - mobile uniquement */}
               <button
                 onClick={() => setMobileOpen(true)}
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
+                className="md:hidden p-2 rounded-lg hover:bg-cream-200 transition-colors text-espresso-700"
                 aria-label="Ouvrir le menu"
               >
                 <Menu className="h-6 w-6" />
@@ -162,11 +167,11 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
 
-        {/* Row 2: search + centered menu + notifications (desktop/tablet) */}
-        <div className="hidden md:block border-t border-gray-100 bg-gray-50">
+        {/* Row 2: recherche + menu centré + notifications (desktop/tablette) */}
+        <div className="hidden md:block border-t border-espresso-900/8 bg-cream-100/60">
           <div className="w-full px-3 lg:px-6">
             <div className="flex items-center gap-3 py-1.5">
-              {/* Centered menu */}
+              {/* Menu centré */}
               <div className="flex-1 flex justify-center overflow-x-auto scrollbar-thin">
                 <div className="flex items-center gap-1">
                   {menuItems.map((item) => {
@@ -181,10 +186,10 @@ const Navigation: React.FC<NavigationProps> = ({
                         title={item.label}
                         className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                           isActive
-                            ? 'bg-blue-100 text-blue-700 shadow-sm'
+                            ? 'bg-clay-600 text-white shadow-warm'
                             : disabled
                             ? 'text-gray-400 cursor-not-allowed'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                            : 'text-espresso-600 hover:text-espresso-900 hover:bg-cream-200'
                         }`}
                       >
                         <Icon className="h-4 w-4 flex-shrink-0" />
@@ -195,7 +200,7 @@ const Navigation: React.FC<NavigationProps> = ({
                 </div>
               </div>
 
-              {/* Notifications + Search - right */}
+              {/* Notifications + Recherche - à droite */}
               <div className="flex-shrink-0 flex items-center gap-2">
                 <NotificationCenter
                   onNavigate={handleModuleChange}
@@ -209,7 +214,7 @@ const Navigation: React.FC<NavigationProps> = ({
         </div>
       </nav>
 
-      {/* Mobile drawer overlay */}
+      {/* Drawer mobile */}
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-50 lg:hidden"
@@ -217,38 +222,33 @@ const Navigation: React.FC<NavigationProps> = ({
         >
           <div
             ref={drawerRef}
-            className="absolute right-0 top-0 bottom-0 w-72 max-w-[80vw] bg-white shadow-2xl flex flex-col"
+            className="absolute right-0 top-0 bottom-0 w-72 max-w-[80vw] bg-cream-50 shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drawer header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <Building className="h-8 w-8 text-blue-600" />
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">GOBEX</h2>
-                  <p className="text-xs text-gray-500">Gestion de Bar</p>
-                </div>
-              </div>
+            {/* En-tête du drawer */}
+            <div className="relative flex items-center justify-between p-4 border-b border-espresso-900/10">
+              <div className="kente-strip absolute top-0 inset-x-0 h-[3px]" aria-hidden="true" />
+              <Brand compact />
               <button
                 onClick={() => setMobileOpen(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
+                className="p-2 rounded-lg hover:bg-cream-200 transition-colors text-espresso-600"
                 aria-label="Fermer le menu"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* User info */}
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+            {/* Infos utilisateur */}
+            <div className="px-4 py-3 border-b border-espresso-900/10 bg-cream-100">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-bold text-blue-700">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-clay-500 to-gold-500 flex items-center justify-center flex-shrink-0 shadow-warm">
+                  <span className="text-sm font-bold text-white">
                     {user.username.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{user.username}</p>
-                  <p className="text-xs text-gray-500">{user.type}</p>
+                  <p className="text-sm font-semibold text-espresso-900 truncate">{user.username}</p>
+                  <p className="text-xs text-espresso-400">{user.type}</p>
                 </div>
               </div>
               {licenseInfo && (
@@ -267,12 +267,12 @@ const Navigation: React.FC<NavigationProps> = ({
               )}
             </div>
 
-            {/* Search */}
-            <div className="p-4 border-b border-gray-200">
+            {/* Recherche */}
+            <div className="p-4 border-b border-espresso-900/10">
               <GlobalSearch onNavigate={handleModuleChange} />
             </div>
 
-            {/* Menu items - ALL items visible */}
+            {/* Éléments de menu - TOUS visibles */}
             <div className="flex-1 overflow-y-auto py-2">
               {menuItems.map((item) => {
                 const Icon = item.icon;
@@ -284,24 +284,24 @@ const Navigation: React.FC<NavigationProps> = ({
                     disabled={disabled}
                     className={`w-full flex items-center space-x-3 px-4 py-3 transition-all duration-200 ${
                       currentModule === item.id
-                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
+                        ? 'bg-clay-100 text-clay-700 border-r-2 border-clay-600'
                         : disabled
                         ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        : 'text-espresso-700 hover:bg-cream-200'
                     }`}
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
                     <span className="font-medium text-sm">{item.label}</span>
                     {currentModule === item.id && (
-                      <span className="ml-auto w-2 h-2 bg-blue-600 rounded-full" />
+                      <span className="ml-auto w-2 h-2 bg-clay-600 rounded-full" />
                     )}
                   </button>
                 );
               })}
             </div>
 
-            {/* Sync status */}
-            <div className="px-4 py-3 border-t border-gray-200">
+            {/* Statut de synchronisation */}
+            <div className="px-4 py-3 border-t border-espresso-900/10">
               <SyncStatusIndicator user={user} />
             </div>
           </div>
