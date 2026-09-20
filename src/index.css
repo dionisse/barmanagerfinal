@@ -80,6 +80,15 @@ html {
   }
 }
 
+/* ── CRM : identité typographique interne ────────────────────── */
+/* Titres de l'application (modules, dashboard, navigation) en
+   Fraunces, comme la vitrine publique. Présentation uniquement. */
+.crm-root h1,
+.crm-root h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  letter-spacing: -0.015em;
+}
+
 /* ── Page d'authentification — identité « Terra » ────────────── */
 :root {
   --login-bg: #faf4e9;

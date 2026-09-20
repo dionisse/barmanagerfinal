@@ -261,7 +261,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="crm-root min-h-screen bg-cream-100 font-body">
       <Navigation 
         user={currentUser} 
         currentModule={currentModule}

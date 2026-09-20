@@ -185,30 +185,30 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       title: 'Ventes',
       value: `${periodStats.totalVentes.toLocaleString()} FCFA`,
       icon: TrendingUp,
-      color: 'bg-gradient-to-br from-blue-500 to-blue-600',
+      tile: 'bg-clay-100 text-clay-600',
       sub: `${periodFilteredSales.length} vente(s)`
     },
     {
       title: 'Stock Total',
       value: `${stats.stockTotal} Articles`,
       icon: Package,
-      color: 'bg-gradient-to-br from-green-500 to-green-600',
+      tile: 'bg-kente-green/10 text-kente-green',
       sub: `${allProducts.length} produit(s)`
     },
     {
       title: 'Bénéfice Net',
       value: `${periodStats.beneficeNet.toLocaleString()} FCFA`,
       icon: DollarSign,
-      color: periodStats.beneficeNet >= 0
-        ? 'bg-gradient-to-br from-teal-500 to-teal-600'
-        : 'bg-gradient-to-br from-red-500 to-red-600',
+      tile: periodStats.beneficeNet >= 0
+        ? 'bg-kente-green/10 text-kente-green'
+        : 'bg-red-100 text-red-600',
       sub: `Marge: ${periodStats.margeBrute.toLocaleString()} FCFA`
     },
     {
       title: 'ROI',
       value: `${stats.roi.toFixed(1)}%`,
       icon: Percent,
-      color: 'bg-gradient-to-br from-amber-500 to-amber-600',
+      tile: 'bg-gold-100 text-gold-700',
       sub: stats.roi >= 0 ? 'Positif' : 'Négatif'
     }
   ];
@@ -217,23 +217,26 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Tableau de Bord - {user.type}
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-clay-600 mb-1.5">
+            Tableau de bord · {user.type}
+          </p>
+          <h1 className="text-3xl font-semibold text-espresso-900">
+            Bonjour, {user.username} 👋
           </h1>
-          <p className="text-gray-600 mt-2">
-            Bienvenue, {user.username}. Voici un aperçu de votre activité.
+          <p className="text-espresso-500 mt-1.5">
+            Voici un aperçu de votre activité.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="flex bg-white rounded-xl border border-espresso-900/10 shadow-card overflow-hidden">
             {(Object.keys(periodLabels) as PeriodKey[]).map(key => (
               <button
                 key={key}
                 onClick={() => setPeriod(key)}
                 className={`px-3 py-2 text-sm font-medium transition-colors ${
                   period === key
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-clay-600 text-white'
+                    : 'text-espresso-600 hover:bg-cream-200'
                 }`}
               >
                 {periodLabels[key]}
@@ -256,19 +259,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         {statCards.map((card, index) => {
           const Icon = card.icon;
           return (
-            <div key={index} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-              <div className={`${card.color} px-6 py-4`}>
+            <div key={index} className="bg-white rounded-2xl border border-espresso-900/8 shadow-card overflow-hidden hover:shadow-lift transition-shadow duration-300">
+              <div className="p-5">
                 <div className="flex items-center justify-between">
-                  <div className="text-white">
-                    <p className="text-sm opacity-90">{card.title}</p>
-                    <p className="text-2xl font-bold mt-1">{card.value}</p>
-                  </div>
-                  <Icon className="h-8 w-8 text-white opacity-80" />
+                  <span className={`grid place-items-center h-11 w-11 rounded-xl ${card.tile}`}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-espresso-400">
+                    {card.title}
+                  </span>
                 </div>
+                <p className="mt-4 text-2xl font-bold text-espresso-900">{card.value}</p>
               </div>
-              <div className="px-6 py-3 bg-gray-50">
+              <div className="px-5 py-2.5 bg-cream-100 border-t border-espresso-900/5">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">{card.sub}</span>
+                  <span className="text-sm text-espresso-500">{card.sub}</span>
                   <div className={`flex items-center space-x-1 ${
                     card.title === 'Bénéfice Net' && periodStats.beneficeNet < 0
                       ? 'text-red-600' : 'text-green-600'
@@ -286,7 +291,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       </div>
 
       {/* Sales Chart - Last 7 days */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+      <div className="bg-white rounded-2xl border border-espresso-900/8 shadow-card p-6 mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -301,7 +306,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
               <div className="w-full bg-gray-100 rounded-t-lg relative flex-1 flex items-end overflow-hidden">
                 <div
-                  className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-lg transition-all duration-500 hover:from-blue-700 hover:to-blue-500"
+                  className="w-full bg-gradient-to-t from-clay-600 to-gold-400 rounded-t-lg transition-all duration-500 hover:from-clay-700 hover:to-gold-500"
                   style={{ height: `${(day.total / maxSalesDay) * 100}%` }}
                 />
               </div>
@@ -313,7 +318,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Top Products */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl border border-espresso-900/8 shadow-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Top 5 Produits</h2>
             <TrendingUp className="h-5 w-5 text-gray-400" />
@@ -339,7 +344,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-blue-500 to-blue-400 rounded-full h-2 transition-all duration-500"
+                      className="bg-gradient-to-r from-clay-500 to-gold-400 rounded-full h-2 transition-all duration-500"
                       style={{ width: `${(product.revenu / maxProductRevenue) * 100}%` }}
                     />
                   </div>
@@ -350,7 +355,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
 
         {/* Recent Sales */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl border border-espresso-900/8 shadow-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Ventes Récentes</h2>
             <Calendar className="h-5 w-5 text-gray-400" />
@@ -388,7 +393,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
       {/* Low Stock + Period Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl border border-espresso-900/8 shadow-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">Alertes Stock</h2>
             <AlertTriangle className="h-5 w-5 text-gray-400" />
@@ -424,7 +429,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
 
         {/* Period Financial Summary */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl border border-espresso-900/8 shadow-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
               Résumé {periodLabels[period]}
