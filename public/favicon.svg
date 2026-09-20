@@ -1,5 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-  <rect width="24" height="24" rx="6" fill="#3b82f6"/>
-  <path d="M12 6 7 9v6l5 3 5-3V9l-5-3Z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M12 9v6M9.5 10.7 12 12l2.5-1.3M9.5 13.3 12 12" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <clipPath id="tile">
+      <rect x="4" y="4" width="56" height="56" rx="11"/>
+    </clipPath>
+    <linearGradient id="clayGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#D4702A"/>
+      <stop offset="1" stop-color="#C25E1E"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#241711"/>
+  <rect x="4" y="4" width="56" height="56" rx="11" fill="url(#clayGrad)"/>
+  <!-- mousse -->
+  <circle cx="25.5" cy="17.5" r="4" fill="#FDFAF4"/>
+  <circle cx="33" cy="15" r="4.6" fill="#FDFAF4"/>
+  <circle cx="40.5" cy="17.5" r="4" fill="#FDFAF4"/>
+  <!-- verre -->
+  <path d="M22.5 21.5h21v23.5a3.5 3.5 0 0 1-3.5 3.5h-14a3.5 3.5 0 0 1-3.5-3.5V21.5z" fill="#FDFAF4"/>
+  <!-- anse -->
+  <path d="M43.5 26h3.2a6.4 6.4 0 0 1 0 12.8h-3.2v-4.4h2.6a2 2 0 0 0 0-4h-2.6V26z" fill="#FDFAF4"/>
+  <!-- bande kente (clippée aux coins arrondis) -->
+  <g clip-path="url(#tile)">
+    <rect x="4" y="51" width="56" height="9" fill="#241711"/>
+    <rect x="4" y="53.5" width="8" height="4" fill="#E5AF2E"/>
+    <rect x="14" y="53.5" width="11" height="4" fill="#C25E1E"/>
+    <rect x="27" y="53.5" width="7" height="4" fill="#2F6B45"/>
+    <rect x="36" y="53.5" width="9" height="4" fill="#F3E9D6"/>
+    <rect x="47" y="53.5" width="8" height="4" fill="#E5AF2E"/>
+    <rect x="57" y="53.5" width="3" height="4" fill="#241711"/>
+  </g>
 </svg>
