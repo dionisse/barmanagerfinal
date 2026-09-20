@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
 
 // Initialize Supabase client
 // Use environment variables if available (for production), otherwise use hardcoded values (for development)
@@ -65,7 +64,7 @@ export class SupabaseService {
         success: true,
         message: 'Données synchronisées avec succès'
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logDebug('Erreur lors de la sauvegarde des données:', error);
       return {
         success: false,
@@ -115,7 +114,7 @@ export class SupabaseService {
         data: data.data,
         lastSync: data.last_sync
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logDebug('Erreur lors de la récupération des données:', error);
       return {
         success: false,
@@ -124,7 +123,7 @@ export class SupabaseService {
     }
   }
 
-  // Méthode pour authentifier un utilisateur
+  // Méthode pour authentifier un utilisateur — support hash bcrypt + essai
   async authenticateUser(username: string, password: string, userType: string): Promise<{ success: boolean; user?: any; message?: string }> {
     try {
       if (!navigator.onLine) {
@@ -136,117 +135,186 @@ export class SupabaseService {
 
       this.logDebug('Tentative d\'authentification pour:', username, userType);
 
-      // Query users table to get user with user_lot_id
-      const { data: users, error } = await supabase
-        .rpc('authenticate_user', {
-          p_username: username,
-          p_password: password,
-          p_role: userType
-        });
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (!users || users.length === 0) {
-        return {
-          success: false,
-          message: 'Identifiants incorrects'
-        };
+      // 1. Récupère l'utilisateur directement (pour gérer hash bcrypt)
+      const { data: dbUser, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .maybeSingle();
+
+      if (userError) throw userError;
+
+      if (!dbUser) {
+        // Fallback RPC ancien système
+        try {
+          const { data: users, error } = await supabase
+            .rpc('authenticate_user', {
+              p_username: username,
+              p_password: password,
+              p_role: userType
+            });
+          if (!error && users && users.length > 0) {
+            const userData = users[0];
+            if (userData.role === 'Propriétaire') {
+              return {
+                success: true,
+                user: {
+                  id: userData.user_id,
+                  username: userData.username,
+                  type: 'Propriétaire',
+                  dateCreation: userData.created_at,
+                  userLotId: null
+                }
+              };
+            }
+          }
+        } catch {}
+        return { success: false, message: 'Identifiants incorrects' };
       }
 
-      const userData = users[0];
+      // Vérifie mot de passe avec support hash + legacy plain
+      const { verifyPassword } = await import('./securityService');
+      const valid = await verifyPassword(password, dbUser.password);
+      if (!valid) {
+        return { success: false, message: 'Identifiants incorrects' };
+      }
+
+      if (dbUser.role && userType && dbUser.role !== userType && userType !== 'Propriétaire' && dbUser.role !== 'Propriétaire') {
+        // Tolère si type différent mais laisse passer (pour compatibilité)
+      }
 
       // Le propriétaire a un accès illimité sans vérification de licence
-      if (userData.role === 'Propriétaire') {
+      if (dbUser.role === 'Propriétaire') {
         this.logDebug('Authentification du propriétaire réussie - accès illimité');
         return {
           success: true,
           user: {
-            id: userData.user_id,
-            username: userData.username,
+            id: dbUser.id,
+            username: dbUser.username,
             type: 'Propriétaire',
-            dateCreation: userData.created_at,
+            dateCreation: dbUser.created_at,
             userLotId: null
           }
         };
       }
 
-      // Pour les autres utilisateurs (Gestionnaire et Employé), vérifier la licence
-      if (userData.user_lot_id) {
-        const { data: licenses, error: licenseError } = await supabase
+      // Pour les autres utilisateurs (Gestionnaire et Employé), vérifier la licence / essai
+      if (dbUser.user_lot_id) {
+        const { data: userLot } = await supabase
+          .from('user_lots')
+          .select('*')
+          .eq('id', dbUser.user_lot_id)
+          .maybeSingle();
+
+        if (userLot && userLot.status !== 'active') {
+          return { success: false, message: 'Compte suspendu. Contactez l\'administrateur.' };
+        }
+
+        const { data: licenses } = await supabase
           .from('licenses')
           .select('*')
-          .eq('user_lot_id', userData.user_lot_id)
-          .eq('active', true);
+          .eq('user_lot_id', dbUser.user_lot_id)
+          .eq('active', true)
+          .order('date_fin', { ascending: false });
 
-        if (licenseError) {
-          throw licenseError;
+        // Si essai et expiré, on autorise quand même en lecture seule (le blocage se fait dans dataService)
+        if (userLot?.is_trial) {
+          const trialEnds = userLot.trial_ends_at ? new Date(userLot.trial_ends_at) : null;
+          const isTrialExpired = trialEnds ? trialEnds < new Date() : false;
+          if (isTrialExpired && (!licenses || licenses.length === 0)) {
+            // Retourne user mais flag essai expiré
+            return {
+              success: true,
+              user: {
+                id: dbUser.id,
+                username: dbUser.username,
+                type: dbUser.role,
+                dateCreation: dbUser.created_at,
+                userLotId: dbUser.user_lot_id,
+                license: null,
+                isTrialExpired: true
+              }
+            };
+          }
         }
 
         if (!licenses || licenses.length === 0) {
-          return {
-            success: false,
-            message: 'Aucune licence active trouvée pour cet utilisateur'
-          };
+          // Pas de licence mais peut être essai encore valide
+          if (userLot?.is_trial) {
+            const trialEnds = userLot.trial_ends_at ? new Date(userLot.trial_ends_at) : null;
+            if (trialEnds && trialEnds >= new Date()) {
+              return {
+                success: true,
+                user: {
+                  id: dbUser.id,
+                  username: dbUser.username,
+                  type: dbUser.role,
+                  dateCreation: dbUser.created_at,
+                  userLotId: dbUser.user_lot_id,
+                  license: null
+                }
+              };
+            }
+          }
+          return { success: false, message: 'Aucune licence active trouvée pour cet utilisateur' };
         }
 
-        const licenseData = licenses[0];
-        const dateFin = new Date(licenseData.date_fin);
+        // Cherche licence valide
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const sorted = licenses
+          .map((l: any) => ({ license: l, dateFin: new Date(l.date_fin) }))
+          .map(({ license, dateFin }: any) => {
+            dateFin.setHours(23, 59, 59, 999);
+            return { license, dateFin };
+          })
+          .filter(({ dateFin }: any) => dateFin >= today)
+          .sort((a: any, b: any) => b.dateFin.getTime() - a.dateFin.getTime());
 
-        if (dateFin < new Date()) {
-          return {
-            success: false,
-            message: 'Licence expirée. Contactez le propriétaire.'
-          };
+        // Si aucune licence ne couvre aujourd'hui mais essai expiré -> lecture seule
+        if (sorted.length === 0) {
+          // Vérifie si essai expiré
+          if (userLot?.is_trial) {
+            return {
+              success: true,
+              user: {
+                id: dbUser.id,
+                username: dbUser.username,
+                type: dbUser.role,
+                dateCreation: dbUser.created_at,
+                userLotId: dbUser.user_lot_id,
+                license: licenses[0],
+                isExpired: true
+              }
+            };
+          }
+          return { success: false, message: 'Licence expirée. Contactez le propriétaire.' };
         }
 
-        // Vérifier le statut du lot d'utilisateurs
-        const { data: userLot, error: userLotError } = await supabase
-          .from('user_lots')
-          .select('*')
-          .eq('id', userData.user_lot_id)
-          .single();
+        const licenseData = sorted[0].license;
 
-        if (userLotError) {
-          throw userLotError;
-        }
-
-        if (userLot.status !== 'active') {
-          return {
-            success: false,
-            message: 'Compte suspendu. Contactez l\'administrateur.'
-          };
-        }
-
-        // Construire l'objet utilisateur avec les informations de licence
         return {
           success: true,
           user: {
-            id: userData.user_id,
-            username: userData.username,
-            type: userData.role,
-            dateCreation: userData.created_at,
-            userLotId: userData.user_lot_id,
+            id: dbUser.id,
+            username: dbUser.username,
+            type: dbUser.role,
+            dateCreation: dbUser.created_at,
+            userLotId: dbUser.user_lot_id,
             license: {
               type: licenseData.license_type,
-              dateFin: licenseData.date_fin
+              dateFin: licenseData.date_fin,
+              id: licenseData.id,
+              isTrial: !!licenseData.is_trial
             }
           }
         };
       }
 
-      // Utilisateur sans licence ni rôle propriétaire - refuser l'accès
-      return {
-        success: false,
-        message: 'Aucune licence associée à ce compte'
-      };
-    } catch (error) {
+      return { success: false, message: 'Aucune licence associée à ce compte' };
+    } catch (error: any) {
       this.logDebug('Erreur lors de l\'authentification:', error);
-      return {
-        success: false,
-        message: `Erreur: ${error.message}`
-      };
+      return { success: false, message: `Erreur: ${error.message}` };
     }
   }
 
@@ -265,9 +333,7 @@ export class SupabaseService {
         .select('*')
         .eq('username', username);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (!users || users.length === 0) {
         return { hasAccess: false };
@@ -278,17 +344,11 @@ export class SupabaseService {
       // Le propriétaire a toujours accès sans vérification de licence
       if (userData.role === 'Propriétaire') {
         this.logDebug('Propriétaire détecté - accès illimité accordé');
-        return {
-          hasAccess: true,
-          message: 'Accès illimité - Propriétaire'
-        };
+        return { hasAccess: true, message: 'Accès illimité - Propriétaire' };
       }
 
       const userLotId = userData.user_lot_id;
-
-      if (!userLotId) {
-        return { hasAccess: false };
-      }
+      if (!userLotId) return { hasAccess: false };
       
       // Récupérer le lot d'utilisateurs
       const { data: userLot, error: userLotError } = await supabase
@@ -307,8 +367,11 @@ export class SupabaseService {
         return { hasAccess: false, message: 'Lot d\'utilisateurs introuvable' };
       }
       
-      if (userLot.status !== 'active') {
-        return { hasAccess: false };
+      if (userLot.status !== 'active' && userLot.status !== 'suspended') {
+        // 'suspended' peut quand même avoir accès lecture seule, on gère plus bas
+      }
+      if (userLot.status === 'suspended' && !userLot.is_trial) {
+        return { hasAccess: false, userLot, message: 'Compte suspendu' };
       }
       
       // Vérifier la licence
@@ -318,33 +381,44 @@ export class SupabaseService {
         .eq('user_lot_id', userLotId)
         .eq('active', true);
       
-      if (licenseError) {
-        throw licenseError;
-      }
+      if (licenseError) throw licenseError;
       
+      // Si pas de licence mais essai
       if (!licenses || licenses.length === 0) {
+        if (userLot.is_trial && userLot.trial_ends_at) {
+          const trialEnd = new Date(userLot.trial_ends_at);
+          const now = new Date();
+          if (trialEnd >= now) {
+            return { hasAccess: true, userLot, license: null };
+          } else {
+            // Essai expiré -> lecture seule, pas d'accès écriture mais on retourne hasAccess false avec userLot pour banner
+            return { hasAccess: false, userLot, license: null, message: 'Essai expiré' };
+          }
+        }
         return { hasAccess: false, userLot };
       }
       
-      const licenseData = licenses[0];
-
-      // Normaliser les dates pour comparer uniquement les jours
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const dateFin = new Date(licenseData.date_fin);
-      dateFin.setHours(23, 59, 59, 999);
+      const sorted = (licenses || [])
+        .map((l: any) => ({ license: l, dateFin: new Date(l.date_fin) }))
+        .map(({ license, dateFin }: any) => {
+          dateFin.setHours(23, 59, 59, 999);
+          return { license, dateFin };
+        })
+        .filter(({ dateFin }: any) => dateFin >= today)
+        .sort((a: any, b: any) => b.dateFin.getTime() - a.dateFin.getTime());
 
-      if (dateFin < today) {
-        return { hasAccess: false, userLot };
+      if (sorted.length === 0) {
+        // Toutes licences expirées mais si essai aussi expiré, on retourne expiré
+        return { hasAccess: false, userLot, license: licenses[0], message: 'Licence expirée' };
       }
+
+      const licenseData = sorted[0].license;
       
-      return {
-        hasAccess: true,
-        license: licenseData,
-        userLot
-      };
-    } catch (error) {
+      return { hasAccess: true, license: licenseData, userLot };
+    } catch (error: any) {
       this.logDebug('Erreur lors de la vérification de licence:', error);
       return { hasAccess: false, message: error.message };
     }
@@ -354,10 +428,7 @@ export class SupabaseService {
   async registerUserLotAndLicense(userLot: any, license: any): Promise<{ success: boolean; message?: string }> {
     try {
       if (!navigator.onLine) {
-        return {
-          success: false,
-          message: 'Hors ligne - impossible d\'enregistrer'
-        };
+        return { success: false, message: 'Hors ligne - impossible d\'enregistrer' };
       }
       
       this.logDebug('Enregistrement d\'un lot d\'utilisateurs et licence');
@@ -368,16 +439,11 @@ export class SupabaseService {
         .select('username')
         .in('username', [userLot.gestionnaire.username, userLot.employe.username]);
       
-      if (checkError) {
-        throw checkError;
-      }
+      if (checkError) throw checkError;
       
       if (existingUsers && existingUsers.length > 0) {
         const existingUsername = existingUsers[0].username;
-        return {
-          success: false,
-          message: `Le nom d'utilisateur "${existingUsername}" existe déjà`
-        };
+        return { success: false, message: `Le nom d'utilisateur \"${existingUsername}\" existe déjà` };
       }
       
       // Créer le lot d'utilisateurs
@@ -393,9 +459,7 @@ export class SupabaseService {
           status: userLot.status
         }]);
       
-      if (userLotError) {
-        throw userLotError;
-      }
+      if (userLotError) throw userLotError;
       
       // Créer la licence
       const { error: licenseError } = await supabase
@@ -412,9 +476,7 @@ export class SupabaseService {
           user_lot_id: userLot.id
         }]);
       
-      if (licenseError) {
-        throw licenseError;
-      }
+      if (licenseError) throw licenseError;
       
       // Créer les utilisateurs dans la table users
       const { error: usersError } = await supabase
@@ -436,19 +498,12 @@ export class SupabaseService {
           }
         ]);
       
-      if (usersError) {
-        throw usersError;
-      }
+      if (usersError) throw usersError;
       
-      return {
-        success: true
-      };
-    } catch (error) {
+      return { success: true };
+    } catch (error: any) {
       this.logDebug('Erreur lors de l\'enregistrement:', error);
-      return {
-        success: false,
-        message: `Erreur: ${error.message || 'Erreur inconnue lors de l\'enregistrement'}`
-      };
+      return { success: false, message: `Erreur: ${error.message || 'Erreur inconnue lors de l\'enregistrement'}` };
     }
   }
 

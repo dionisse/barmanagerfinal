@@ -3,6 +3,46 @@ import { supabaseService } from './supabaseService';
 import { indexedDBService } from './indexedDBService';
 import { enhancedSyncService } from './enhancedSyncService';
 
+/* ---------------------------------------------------------------------------
+ * Lecture seule — blocage insert/update/delete si essai expiré ou licence expirée
+ * Le flag est posé par App.tsx dans localStorage 'ahandjo_readonly_mode'
+ * ------------------------------------------------------------------------- */
+export function isReadOnlyModeActive(): boolean {
+  try {
+    if (localStorage.getItem('ahandjo_readonly_mode') === 'true') return true;
+    const userRaw = localStorage.getItem('gobex_current_user');
+    if (!userRaw) return false;
+    const user = JSON.parse(userRaw);
+    if (user?.type === 'Propriétaire') return false;
+    // Vérifie licence dans l'objet user (issu de simpleAuth)
+    if (user?.license) {
+      const dateFin = new Date(user.license.dateFin || user.license.date_fin || '');
+      if (!isNaN(dateFin.getTime()) && dateFin < new Date()) {
+        // Si licence trial ou payante expirée -> lecture seule sauf si une nouvelle licence active existe en IndexedDB
+        // On laisse App.tsx gérer le flag global, ici on ne bloque que si flag présent ou si trial explicitement expiré
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function ensureNotReadOnly(): void {
+  if (isReadOnlyModeActive()) {
+    throw new Error("🔒 Mode lecture seule activé : votre période d'essai ou votre licence a expiré. Veuillez acheter une licence pour réactiver l'écriture. Vos données restent consultables.");
+  }
+}
+
+export function setReadOnlyMode(isReadOnly: boolean) {
+  try {
+    localStorage.setItem('ahandjo_readonly_mode', isReadOnly ? 'true' : 'false');
+    if (isReadOnly) {
+      window.dispatchEvent(new CustomEvent('ahandjo_readonly_changed', { detail: { readOnly: true } }));
+    }
+  } catch {}
+}
+
 // Default settings structure
 export const defaultSettings: Settings = {
   entreprise: {
@@ -165,6 +205,7 @@ export const getProducts = async (): Promise<Product[]> => {
 };
 
 export const addProduct = async (product: Product): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('products', product);
   
   // Trigger sync after data change
@@ -172,6 +213,7 @@ export const addProduct = async (product: Product): Promise<void> => {
 };
 
 export const updateProduct = async (updatedProduct: Product): Promise<void> => {
+  ensureNotReadOnly();
   console.log('[DATA SERVICE] updateProduct appelé:', {
     id: updatedProduct.id,
     nom: updatedProduct.nom,
@@ -185,6 +227,7 @@ export const updateProduct = async (updatedProduct: Product): Promise<void> => {
 };
 
 export const deleteProduct = async (productId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('products', productId);
   
   // Trigger sync after data change
@@ -197,6 +240,7 @@ export const getPurchases = async (): Promise<Purchase[]> => {
 };
 
 export const addPurchase = async (purchase: Purchase): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('purchases', purchase);
   
   // Trigger sync after data change
@@ -209,6 +253,7 @@ export const getMultiPurchases = async (): Promise<MultiPurchase[]> => {
 };
 
 export const addMultiPurchase = async (purchase: MultiPurchase): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('multi_purchases', purchase);
   
   // Trigger sync after data change
@@ -216,6 +261,7 @@ export const addMultiPurchase = async (purchase: MultiPurchase): Promise<void> =
 };
 
 export const updateMultiPurchase = async (updatedPurchase: MultiPurchase): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('multi_purchases', updatedPurchase);
   
   // Trigger sync after data change
@@ -223,6 +269,7 @@ export const updateMultiPurchase = async (updatedPurchase: MultiPurchase): Promi
 };
 
 export const deleteMultiPurchase = async (purchaseId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('multi_purchases', purchaseId);
   
   // Trigger sync after data change
@@ -235,6 +282,7 @@ export const getSales = async (): Promise<Sale[]> => {
 };
 
 export const addSale = async (sale: Sale): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('sales', sale);
   
   // Trigger sync after data change
@@ -242,6 +290,7 @@ export const addSale = async (sale: Sale): Promise<void> => {
 };
 
 export const updateSale = async (updatedSale: Sale): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('sales', updatedSale);
   
   // Trigger sync after data change
@@ -249,6 +298,7 @@ export const updateSale = async (updatedSale: Sale): Promise<void> => {
 };
 
 export const deleteSale = async (saleId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('sales', saleId);
   
   // Trigger sync after data change
@@ -261,6 +311,7 @@ export const getPackaging = async (): Promise<Packaging[]> => {
 };
 
 export const addPackaging = async (packaging: Packaging): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('packaging', packaging);
   
   // Trigger sync after data change
@@ -268,6 +319,7 @@ export const addPackaging = async (packaging: Packaging): Promise<void> => {
 };
 
 export const updatePackaging = async (updatedPackaging: Packaging): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('packaging', updatedPackaging);
   
   // Trigger sync after data change
@@ -275,6 +327,7 @@ export const updatePackaging = async (updatedPackaging: Packaging): Promise<void
 };
 
 export const deletePackaging = async (packagingId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('packaging', packagingId);
   
   // Trigger sync after data change
@@ -287,6 +340,7 @@ export const getPackagingPurchases = async (): Promise<PackagingPurchase[]> => {
 };
 
 export const addPackagingPurchase = async (purchase: PackagingPurchase): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('packaging_purchases', purchase);
   
   // Trigger sync after data change
@@ -299,6 +353,7 @@ export const getExpenses = async (): Promise<Expense[]> => {
 };
 
 export const addExpense = async (expense: Expense): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('expenses', expense);
   
   // Trigger sync after data change
@@ -306,6 +361,7 @@ export const addExpense = async (expense: Expense): Promise<void> => {
 };
 
 export const updateExpense = async (updatedExpense: Expense): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('expenses', updatedExpense);
   
   // Trigger sync after data change
@@ -313,6 +369,7 @@ export const updateExpense = async (updatedExpense: Expense): Promise<void> => {
 };
 
 export const deleteExpense = async (expenseId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('expenses', expenseId);
   
   // Trigger sync after data change
@@ -325,16 +382,19 @@ export const getVersements = async (): Promise<Versement[]> => {
 };
 
 export const addVersement = async (versement: Versement): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('versements', versement);
   triggerSync();
 };
 
 export const updateVersement = async (updatedVersement: Versement): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('versements', updatedVersement);
   triggerSync();
 };
 
 export const deleteVersement = async (versementId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('versements', versementId);
   triggerSync();
 };
@@ -345,6 +405,7 @@ export const getUserLots = async (): Promise<UserLot[]> => {
 };
 
 export const addUserLot = async (userLot: UserLot): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('user_lots', userLot);
   
   // Trigger sync after data change
@@ -352,6 +413,7 @@ export const addUserLot = async (userLot: UserLot): Promise<void> => {
 };
 
 export const updateUserLot = async (updatedUserLot: UserLot): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('user_lots', updatedUserLot);
   
   // Trigger sync after data change
@@ -359,6 +421,7 @@ export const updateUserLot = async (updatedUserLot: UserLot): Promise<void> => {
 };
 
 export const deleteUserLot = async (userLotId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('user_lots', userLotId);
   
   // Trigger sync after data change
@@ -371,6 +434,7 @@ export const getLicenses = async (): Promise<License[]> => {
 };
 
 export const addLicense = async (license: License): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('licenses', license);
   
   // Synchroniser avec la base de données cloud
@@ -405,6 +469,7 @@ export const addLicense = async (license: License): Promise<void> => {
 };
 
 export const updateLicense = async (updatedLicense: License): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('licenses', updatedLicense);
   
   // Trigger sync after data change
@@ -639,7 +704,8 @@ export const checkLicenseExpiration = async (): Promise<{ expired: boolean; warn
       const endDate = new Date(license.dateFin);
       endDate.setHours(23, 59, 59, 999);
 
-      const daysUntilExpiry = Math.ceil((endDate.getTime() - todayNormalized.getTime()) / (1000 * 60 * 60 * 24));
+      // Jours calendaires (floor) — cohérent avec licenseService.computeLicenseStatus
+      const daysUntilExpiry = Math.floor((endDate.getTime() - todayNormalized.getTime()) / (1000 * 60 * 60 * 24));
 
       if (daysUntilExpiry < 0) {
         hasExpired = true;
@@ -661,6 +727,7 @@ export const getInventoryRecords = async (): Promise<InventoryRecord[]> => {
 };
 
 export const addInventoryRecord = async (record: InventoryRecord): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('inventory_records', record);
   
   // Trigger sync after data change
@@ -707,6 +774,7 @@ export const getSettings = async (): Promise<Settings> => {
 };
 
 export const updateSettings = async (updatedSettings: Settings): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('settings', { key: 'app_settings', value: updatedSettings });
   
   // Trigger sync after data change
@@ -804,16 +872,19 @@ export const getStockSalesCalculations = async (): Promise<StockSalesCalculation
 };
 
 export const addStockSalesCalculation = async (calculation: StockSalesCalculation): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('stock_sales_calculations', calculation);
   triggerSync();
 };
 
 export const updateStockSalesCalculation = async (calculation: StockSalesCalculation): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('stock_sales_calculations', calculation);
   triggerSync();
 };
 
 export const deleteStockSalesCalculation = async (calculationId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('stock_sales_calculations', calculationId);
   triggerSync();
 };
@@ -942,16 +1013,19 @@ export const getClients = async (): Promise<Client[]> => {
 };
 
 export const addClient = async (client: Client): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('clients', client);
   triggerSync();
 };
 
 export const updateClient = async (client: Client): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('clients', client);
   triggerSync();
 };
 
 export const deleteClient = async (clientId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('clients', clientId);
   triggerSync();
 };
@@ -962,16 +1036,19 @@ export const getSuppliers = async (): Promise<Supplier[]> => {
 };
 
 export const addSupplier = async (supplier: Supplier): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('suppliers', supplier);
   triggerSync();
 };
 
 export const updateSupplier = async (supplier: Supplier): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.saveData('suppliers', supplier);
   triggerSync();
 };
 
 export const deleteSupplier = async (supplierId: string): Promise<void> => {
+  ensureNotReadOnly();
   await indexedDBService.deleteData('suppliers', supplierId);
   triggerSync();
 };

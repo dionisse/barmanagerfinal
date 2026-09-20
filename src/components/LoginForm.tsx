@@ -1,21 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { simpleAuth } from '../utils/simpleAuthService';
+import { isAccountLocked, recordFailedAttempt, recordSuccessfulLogin } from '../utils/securityService';
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
   onBackToHome?: () => void;
+  onRegister?: () => void;
+  onForgotPassword?: () => void;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome, onRegister, onForgotPassword }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lockoutInfo, setLockoutInfo] = useState<{ locked: boolean; remainingMinutes?: number } | null>(null);
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (username) {
+      const lock = isAccountLocked(username);
+      setLockoutInfo(lock.locked ? lock : null);
+    }
+  }, [username]);
+
+  useEffect(() => {
+    if (lockoutInfo?.locked && lockoutInfo.remainingMinutes) {
+      const timer = setInterval(() => {
+        const lock = isAccountLocked(username);
+        if (!lock.locked) {
+          setLockoutInfo(null);
+          clearInterval(timer);
+        } else {
+          setLockoutInfo(lock);
+        }
+      }, 10000);
+      return () => clearInterval(timer);
+    }
+  }, [lockoutInfo, username]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const lock = isAccountLocked(username);
+    if (lock.locked) {
+      setError(`Compte bloqué pour ${lock.remainingMinutes} minute(s) après 5 tentatives échouées. Réessayez plus tard.`);
+      setLockoutInfo(lock);
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -23,9 +58,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
       const authResult = await simpleAuth.login(username, password);
 
       if (authResult.success && authResult.user) {
+        recordSuccessfulLogin(username);
+        setAttemptsLeft(null);
         onLogin(authResult.user);
       } else {
-        setError(authResult.message || 'Nom d\'utilisateur ou mot de passe incorrect');
+        const fail = recordFailedAttempt(username);
+        if (fail.locked) {
+          setError(`Trop de tentatives échouées. Compte bloqué ${fail.remainingMinutes} minute(s). Sécurité renforcée.`);
+          setLockoutInfo({ locked: true, remainingMinutes: fail.remainingMinutes });
+        } else {
+          const left = 5 - fail.attempts;
+          setAttemptsLeft(left);
+          setError(`${authResult.message || 'Identifiants incorrects'} - ${left} tentative(s) restante(s) avant blocage`);
+        }
       }
     } catch (err) {
       setError('Erreur de connexion. Vérifiez votre connexion Internet.');
@@ -80,6 +125,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
               <li>
                 <span className="login-feat-dot" />
                 Système de licences sécurisé
+              </li>
+              <li>
+                <span className="login-feat-dot" />
+                Sécurité renforcée & 2FA WhatsApp
               </li>
             </ul>
           </div>
@@ -166,7 +215,26 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
                   )}
                 </button>
               </div>
+              {attemptsLeft !== null && attemptsLeft > 0 && attemptsLeft <= 3 && (
+                <p className="text-xs text-amber-600 mt-1">⚠️ Plus que {attemptsLeft} tentative(s) avant blocage temporaire</p>
+              )}
             </div>
+
+            {lockoutInfo?.locked && (
+              <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600 mt-0.5">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M12 7.5v5M12 16v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-red-800">Compte temporairement bloqué</p>
+                  <p className="text-xs text-red-700 mt-1">
+                    Sécurité renforcée : votre compte est bloqué {lockoutInfo.remainingMinutes} minute(s) après 5 échecs.
+                    Le temps de blocage augmente à chaque série d'échecs (10, 15, 30, 60 min...).
+                  </p>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="login-alert login-alert-error" role="alert">
@@ -178,7 +246,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
               </div>
             )}
 
-            <button className="login-submit" type="submit" disabled={loading}>
+            <button className="login-submit" type="submit" disabled={loading || !!lockoutInfo?.locked}>
               {loading ? (
                 <>
                   <span className="login-spinner" aria-hidden="true" />
@@ -188,6 +256,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
                 'Se connecter'
               )}
             </button>
+
+            <div className="flex items-center justify-between text-sm mt-3">
+              <button type="button" onClick={onForgotPassword} className="text-clay-600 hover:text-clay-700 font-semibold">
+                Mot de passe oublié ?
+              </button>
+              <button type="button" onClick={onRegister} className="text-espresso-600 hover:text-espresso-800 font-semibold">
+                Créer un compte bar
+              </button>
+            </div>
           </form>
 
           <div className="login-divider">
@@ -206,12 +283,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
               lineHeight: 1.6,
               margin: 0,
             }}>
-              Les utilisateurs Gestionnaire et Employé doivent avoir une licence active (Kpêvi, Kléoun, Agbon ou Baba) pour accéder au système.
+              Les utilisateurs Gestionnaire et Employé doivent avoir une licence active. Nouveaux clients : créez votre bar et bénéficiez de 7 jours d'essai gratuit.
             </p>
           </div>
 
           <p className="login-form-foot">
-            AHANDJO v2.0.1 — Système de Gestion de Bar Professionnel
+            AHANDJO v2.0.1 — Système de Gestion de Bar Professionnel • Sécurité renforcée • Rate limiting • 2FA WhatsApp
           </p>
         </div>
       </div>

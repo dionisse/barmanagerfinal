@@ -12,11 +12,38 @@ export interface UserLot {
   };
   dateCreation: string;
   status: 'active' | 'suspended';
+  // Informations du bar (nouveau système d'inscription)
+  barName?: string;
+  barAddress?: string;
+  managerFullName?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  isTrial?: boolean;
+  trialEndsAt?: string;
+  registrationStatus?: 'pending' | 'verified' | 'active' | 'suspended';
+}
+
+export interface BarProfile {
+  id: string;
+  userLotId: string;
+  barName: string;
+  barAddress: string;
+  managerFullName: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  username: string;
+  dateCreation: string;
+  isTrial: boolean;
+  trialEndsAt: string;
+  registrationStatus: 'pending' | 'verified' | 'active' | 'suspended';
+  verifiedAt?: string;
 }
 
 export interface License {
   id: string;
-  type: 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba';
+  type: 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba' | 'Essai';
   duree: number;
   prix: number;
   dateDebut: string;
@@ -25,6 +52,82 @@ export interface License {
   active: boolean;
   userLotId?: string;
   userLot?: UserLot;
+  isTrial?: boolean;
+}
+
+export interface RegistrationData {
+  barName: string;
+  barAddress: string;
+  managerFullName: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  username: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface VerificationCode {
+  id: string;
+  identifier: string; // phone, whatsapp or email
+  code: string;
+  type: 'whatsapp' | 'email' | 'phone';
+  expiresAt: string;
+  attempts: number;
+  verified: boolean;
+  createdAt: string;
+}
+
+export interface LoginAttempt {
+  id?: string;
+  username: string;
+  attempts: number;
+  lastAttempt: string;
+  lockedUntil?: string;
+  lockCount: number;
+}
+
+export interface PasswordResetToken {
+  id: string;
+  identifier: string; // username, email, phone, whatsapp
+  token: string;
+  code: string;
+  expiresAt: string;
+  used: boolean;
+  createdAt: string;
+}
+
+/** Offre commerciale d'abonnement AHANDJO (source unique de vérité des tarifs) */
+export interface LicensePlan {
+  key: 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba';
+  libelle: string;
+  duree: number; // en mois
+  prix: number;  // en FCFA
+  description: string;
+  couleur: string; // classes tailwind pour l'accent de la carte
+  economie?: string; // badge d'économie vs mensuel
+}
+
+/** Statut calculé d'une licence (centralisé pour UI, notifications et accès) */
+export interface LicenseStatusInfo {
+  status: 'active' | 'warning' | 'expired';
+  daysRemaining: number;
+  /** Jalon de notification atteint : 7, 3 ou 0 (jour d'expiration) */
+  milestone: 7 | 3 | 0 | null;
+}
+
+/** Paiement FEDAPAY d'une licence (audit + idempotence du renouvellement automatique) */
+export interface LicensePayment {
+  id?: string;
+  fedapayTransactionId: string;
+  userLotId: string;
+  licenseType: LicensePlan['key'];
+  duree: number;
+  montant: number;
+  status: 'pending' | 'completed' | 'failed' | 'canceled';
+  payerUsername: string;
+  createdAt: string;
+  completedAt?: string;
 }
 
 export interface User {

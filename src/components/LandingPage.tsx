@@ -9,6 +9,7 @@ import { LogoMark, Brand } from './Brand';
 
 interface LandingPageProps {
   onGetStarted: () => void;
+  onRegister?: () => void;
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -356,7 +357,7 @@ const NAV_LINKS = [
    Page de présentation
    ──────────────────────────────────────────────────────────────── */
 
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onRegister }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -402,6 +403,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             </nav>
 
             <div className="hidden items-center gap-3 md:flex">
+              {onRegister && (
+                <button
+                  onClick={onRegister}
+                  className={`rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-200 ${
+                    scrolled
+                      ? 'border border-espresso-900/10 bg-white text-espresso-900 hover:bg-cream-100'
+                      : 'border border-cream-100/20 bg-cream-100/10 text-cream-100 hover:bg-cream-100/20'
+                  }`}
+                >
+                  S'inscrire - 7j gratuit
+                </button>
+              )}
               <button
                 onClick={onGetStarted}
                 className={`group flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-200 ${
@@ -443,6 +456,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               ))}
               <button
                 onClick={() => {
+                  onRegister?.();
+                  setMobileMenuOpen(false);
+                }}
+                className="mt-2 flex items-center justify-center gap-2 rounded-xl border-2 border-clay-600 px-5 py-3 text-sm font-bold text-clay-700"
+              >
+                <span>S'inscrire - 7j gratuit</span>
+              </button>
+              <button
+                onClick={() => {
                   onGetStarted();
                   setMobileMenuOpen(false);
                 }}
@@ -475,7 +497,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-400 opacity-70" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-400" />
                 </span>
-                <span className="text-sm font-medium text-cream-100/90">Nouveau · Synchronisation cloud automatique</span>
+                <span className="text-sm font-medium text-cream-100/90">Nouveau · Inscription directe + Essai 7j gratuit</span>
               </div>
 
               <h1 className="font-display text-4xl font-semibold leading-[1.08] tracking-tight text-cream-50 sm:text-5xl xl:text-6xl">
@@ -485,27 +507,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
               <p className="mt-6 text-lg leading-relaxed text-cream-100/70">
                 Ventes, stocks, achats, clients, rapports : AHANDJO réunit toute la gestion de votre établissement dans
-                une application simple, en français, qui fonctionne même sans internet.
+                une application simple, en français, qui fonctionne même sans internet. Inscrivez votre bar en 2 minutes, 7 jours d'essai offerts.
               </p>
 
               <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+                {onRegister && (
+                  <button
+                    onClick={onRegister}
+                    className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-300 to-gold-400 px-7 py-4 text-base font-bold text-espresso-950 shadow-lift transition-all duration-200 hover:from-gold-200 hover:to-gold-300"
+                  >
+                    <span>Créer mon bar - Gratuit 7j</span>
+                    <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </button>
+                )}
                 <button
                   onClick={onGetStarted}
-                  className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold-300 to-gold-400 px-7 py-4 text-base font-bold text-espresso-950 shadow-lift transition-all duration-200 hover:from-gold-200 hover:to-gold-300"
-                >
-                  <span>Commencer maintenant</span>
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </button>
-                <button
-                  onClick={() => scrollToSection('features')}
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-cream-100/20 bg-cream-100/5 px-7 py-4 text-base font-semibold text-cream-100 backdrop-blur-sm transition-all duration-200 hover:bg-cream-100/10"
                 >
-                  Découvrir les fonctionnalités
+                  Se connecter
                 </button>
               </div>
 
               <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-2">
-                {['Fonctionne hors ligne', 'Factures en FCFA', 'Données sécurisées'].map((item) => (
+                {['Essai 7j gratuit', 'Vérification WhatsApp', 'Fonctionne hors ligne'].map((item) => (
                   <span key={item} className="flex items-center gap-2 text-sm font-medium text-cream-100/60">
                     <Check className="h-4 w-4 text-gold-300" />
                     {item}
@@ -526,8 +550,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 animation="animate-float"
                 tileClass="bg-kente-green/10 text-kente-green"
                 icon={<BadgeCheck className="h-[18px] w-[18px]" />}
-                title="Vente encaissée"
-                sub="+ 4 500 FCFA"
+                title="Bar créé !"
+                sub="Essai 7j activé"
               />
               <FloatingCard
                 className="-left-3 top-1/3 sm:-left-16"
@@ -557,19 +581,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           <div className="grid items-center gap-8 lg:grid-cols-[1.25fr_1fr]">
             <div>
               <h3 className="font-display text-2xl font-semibold tracking-tight text-espresso-900 md:text-3xl">
-                Une gestion complète, du comptoir au bilan du mois
+                Inscription directe, essai 7 jours, licence auto après paiement
               </h3>
               <p className="mt-4 leading-relaxed text-espresso-600/90">
-                Neuf modules intégrés couvrent toute votre activité : ventes et facturation, achats, stocks,
-                emballages, clients, dépenses, rapports et licences. Installez l’application sur votre téléphone ou
-                votre ordinateur, et retrouvez vos données partout — même avec une connexion instable.
+                Créez votre bar vous-même : nom, adresse, WhatsApp, identifiant auto-généré. Vérification par code WhatsApp, puis accès immédiat à 7 jours d'essai complet. Après l'essai, le logiciel passe en lecture seule jusqu'au paiement FEDAPAY — activation automatique.
               </p>
             </div>
             <div className="flex flex-col gap-3">
               {[
-                { icon: WifiOff, label: '100% hors ligne', sub: 'Aucune connexion requise pour vendre' },
-                { icon: Smartphone, label: 'Installable en 1 minute', sub: 'Directement depuis le navigateur' },
-                { icon: Cloud, label: 'Sync entre appareils', sub: 'Comptoir, téléphone, ordinateur' },
+                { icon: ShieldCheck, label: 'Vérification WhatsApp', sub: 'Code à 6 chiffres avant approbation' },
+                { icon: Smartphone, label: 'Essai 7 jours gratuit', sub: 'Toutes les fonctionnalités' },
+                { icon: Cloud, label: 'Blocage intelligent', sub: 'Lecture seule après essai, reprise auto après paiement' },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
@@ -664,11 +686,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <div>
               <SectionEyebrow>Comment ça marche</SectionEyebrow>
               <h2 className="font-display text-3xl font-semibold tracking-tight text-espresso-900 md:text-4xl">
-                Pensé pour le rythme des bars ouest-africains
+                Inscrivez-vous, vérifiez WhatsApp, vendez le jour même
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-espresso-500">
-                Une coupure de courant ou de réseau ne doit jamais arrêter votre service. AHANDJO travaille en local
-                sur votre appareil et se synchronise automatiquement dès que le réseau revient.
+                1. Remplissez le formulaire (nom du bar, WhatsApp, identifiant auto). 2. Recevez un code WhatsApp à 6 chiffres. 3. Accédez à 7 jours d'essai complet. Après l'essai, lecture seule jusqu'au paiement FEDAPAY.
               </p>
 
               <div className="mt-9 grid grid-cols-2 gap-4">
@@ -791,21 +812,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
           <div className="relative">
             <h2 className="font-display text-3xl font-semibold tracking-tight text-cream-50 md:text-4xl">
-              Prêt à prendre le contrôle <span className="italic text-gold-300">de votre bar ?</span>
+              Prêt à créer <span className="italic text-gold-300">votre bar ?</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-cream-100/70">
-              Connectez-vous et retrouvez dès aujourd’hui tous les outils d’une gestion professionnelle — sans
-              installation compliquée.
+              7 jours d'essai gratuit, vérification WhatsApp, activation instantanée après paiement. Sans engagement.
             </p>
-            <button
-              onClick={onGetStarted}
-              className="group mt-9 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gold-300 to-gold-400 px-8 py-4 text-lg font-bold text-espresso-950 shadow-lift transition-all duration-200 hover:from-gold-200 hover:to-gold-300"
-            >
-              <span>Accéder à l’application</span>
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </button>
+            <div className="mt-9 flex flex-col sm:flex-row gap-4 justify-center">
+              {onRegister && (
+                <button
+                  onClick={onRegister}
+                  className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gold-300 to-gold-400 px-8 py-4 text-lg font-bold text-espresso-950 shadow-lift transition-all duration-200 hover:from-gold-200 hover:to-gold-300"
+                >
+                  <span>Créer mon bar - 7j gratuit</span>
+                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </button>
+              )}
+              <button
+                onClick={onGetStarted}
+                className="inline-flex items-center gap-2 rounded-xl border border-cream-100/20 bg-cream-100/10 px-8 py-4 text-lg font-semibold text-cream-100 backdrop-blur-sm transition-all hover:bg-cream-100/20"
+              >
+                <span>Se connecter</span>
+              </button>
+            </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-cream-100/60">
-              {['Sans engagement', 'Fonctionne hors ligne', 'Vos données restent les vôtres'].map((item) => (
+              {['Essai 7j gratuit', 'Vérification WhatsApp', 'Paiement FEDAPAY auto'].map((item) => (
                 <span key={item} className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-gold-300" />
                   {item}
@@ -825,8 +855,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <div>
               <Brand dark />
               <p className="mt-5 max-w-md leading-relaxed text-cream-100/60">
-                Le logiciel de gestion de bar pensé pour l’Afrique de l’Ouest. Vendez, suivez vos stocks et pilotez
-                vos bénéfices — même sans internet.
+                Le logiciel de gestion de bar pensé pour l’Afrique de l’Ouest. Inscrivez votre bar en 2 minutes, 7 jours d'essai gratuit.
               </p>
               <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2">
                 {NAV_LINKS.map((item) => (
@@ -844,15 +873,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <div className="flex flex-col items-start gap-4 md:items-end">
               <div className="md:text-right">
                 <p className="font-display text-lg font-semibold text-cream-100">Prêt à démarrer ?</p>
-                <p className="mt-1 text-sm text-cream-100/60">Accédez à votre espace en un clic.</p>
+                <p className="mt-1 text-sm text-cream-100/60">Essai gratuit, sans carte bancaire.</p>
               </div>
-              <button
-                onClick={onGetStarted}
-                className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gold-300 to-gold-400 px-6 py-3 text-sm font-bold text-espresso-950 shadow-lift transition-all hover:from-gold-200 hover:to-gold-300"
-              >
-                <span>Se connecter</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </button>
+              <div className="flex gap-3">
+                {onRegister && (
+                  <button
+                    onClick={onRegister}
+                    className="inline-flex items-center gap-2 rounded-xl bg-cream-50 px-6 py-3 text-sm font-bold text-espresso-900 shadow-lift"
+                  >
+                    <span>S'inscrire</span>
+                  </button>
+                )}
+                <button
+                  onClick={onGetStarted}
+                  className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gold-300 to-gold-400 px-6 py-3 text-sm font-bold text-espresso-950 shadow-lift transition-all hover:from-gold-200 hover:to-gold-300"
+                >
+                  <span>Se connecter</span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
               <div className="mt-2 flex items-center gap-2">
                 {[Facebook, Instagram, Mail].map((Icon, i) => (
                   <button
