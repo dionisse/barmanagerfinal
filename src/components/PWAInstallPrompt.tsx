@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, Smartphone, Monitor } from 'lucide-react';
+import { Download, X, Smartphone, Monitor, Beer } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -88,12 +88,12 @@ const PWAInstallPrompt: React.FC = () => {
       <div className="bg-white rounded-xl shadow-2xl border border-gray-200 p-6 transform transition-all duration-300 ease-in-out">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-              <Download className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 bg-gradient-to-br from-clay-500 to-gold-500 rounded-xl flex items-center justify-center text-white shadow-warm">
+              <Beer className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Installer GOBEX</h3>
-              <p className="text-sm text-gray-600">Application de bureau</p>
+              <h3 className="font-semibold text-gray-900">Installer AHANDJO</h3>
+              <p className="text-sm text-gray-600">Gestion de bar</p>
             </div>
           </div>
           <button
@@ -125,7 +125,7 @@ const PWAInstallPrompt: React.FC = () => {
           </button>
           <button
             onClick={handleInstallClick}
-            className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors text-sm font-medium flex items-center justify-center space-x-2"
+            className="flex-1 px-4 py-2 bg-gradient-to-r from-clay-600 to-clay-500 text-white rounded-lg hover:from-clay-700 hover:to-clay-600 transition-colors text-sm font-medium flex items-center justify-center space-x-2"
           >
             <Download className="h-4 w-4" />
             <span>Installer</span>

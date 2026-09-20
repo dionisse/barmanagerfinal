@@ -48,8 +48,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
           <div className="login-brand">
             <span className="login-brand-mark" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                <path d="M12 7v10M7.5 9.5 12 12l4.5-2.5M7.5 14.5 12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="8.6" cy="5.9" r="1.7" fill="currentColor" />
+                <circle cx="12" cy="4.6" r="2" fill="currentColor" />
+                <circle cx="15.4" cy="5.9" r="1.7" fill="currentColor" />
+                <path d="M6.8 8.6h10.4v9.6a2.2 2.2 0 0 1-2.2 2.2H9a2.2 2.2 0 0 1-2.2-2.2V8.6Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <path d="M17.2 10.8h1.6a2.6 2.6 0 0 1 0 5.2h-1.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </span>
             <span className="login-brand-name">AHANDJO</span>
@@ -57,10 +60,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
 
           <div className="login-aside-content">
             <h1 className="login-aside-title">
-              Bienvenue à<br />nouveau.
+              Bonjour, et<br />
+              <em>bienvenue.</em>
             </h1>
             <p className="login-aside-sub">
-              Connectez-vous pour reprendre la gestion de votre établissement là où vous l'avez laissée.
+              Connectez-vous pour reprendre la gestion de votre établissement là où vous l'avez laissée — ventes,
+              stocks et rapports vous attendent.
             </p>
 
             <ul className="login-features">
@@ -79,7 +84,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
             </ul>
           </div>
 
-          <p className="login-aside-footer">© 2026 AHANDJO — Gestion de Bar</p>
+          <p className="login-aside-footer">© 2026 AHANDJO — Conçu au Bénin, pour l'Afrique de l'Ouest 🌍</p>
         </div>
 
         <div className="login-form-panel">
@@ -190,9 +195,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
           </div>
 
           <div style={{
-            background: 'rgba(59,130,246,.08)',
-            border: '1px solid rgba(59,130,246,.2)',
-            borderRadius: '8px',
+            background: 'rgba(194, 94, 30, 0.07)',
+            border: '1px solid rgba(194, 94, 30, 0.22)',
+            borderRadius: '10px',
             padding: '12px 14px',
           }}>
             <p style={{
@@ -201,7 +206,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onBackToHome }) => {
               lineHeight: 1.6,
               margin: 0,
             }}>
-              Les utilisateurs Gestionnaire et Employé doivent avoir une licence active pour accéder au système.
+              Les utilisateurs Gestionnaire et Employé doivent avoir une licence active (Kpêvi, Kléoun, Agbon ou Baba) pour accéder au système.
             </p>
           </div>
 
