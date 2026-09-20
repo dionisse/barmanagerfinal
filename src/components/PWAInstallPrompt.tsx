@@ -105,7 +105,7 @@ const PWAInstallPrompt: React.FC = () => {
         </div>
 
         <p className="text-sm text-gray-700 mb-4">
-          Installez GOBEX sur votre appareil pour un accès rapide et une expérience optimale.
+          Installez AHANDJO sur votre appareil pour un accès rapide et une expérience optimale, même hors ligne.
         </p>
 
         <div className="flex items-center space-x-2 mb-4 text-xs text-gray-600">
