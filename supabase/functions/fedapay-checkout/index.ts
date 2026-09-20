@@ -1,5 +1,5 @@
 // ============================================================================
-// Edge Function : fedapay-checkout
+// Edge Function : fedapay-checkout (verify_jwt = false)
 // ============================================================================
 // Crée une transaction FEDAPAY et renvoie l'URL de paiement sécurisée.
 // La clé secrète FEDAPAY reste côté serveur (variable d'environnement

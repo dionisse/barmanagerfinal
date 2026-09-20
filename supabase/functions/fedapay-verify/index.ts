@@ -1,5 +1,5 @@
 // ============================================================================
-// Edge Function : fedapay-verify
+// Edge Function : fedapay-verify (verify_jwt = false)
 // ============================================================================
 // Vérifie le statut réel d'une transaction FEDAPAY. Si elle est approuvée et
 // que le paiement n'a pas encore été consommé, active/prolonge la licence du
