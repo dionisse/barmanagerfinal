@@ -326,18 +326,26 @@ export class SupabaseService {
         return { hasAccess: false, userLot };
       }
       
-      const licenseData = licenses[0];
-
-      // Normaliser les dates pour comparer uniquement les jours
+      // Chercher parmi les licences actives celle qui couvre aujourd'hui,
+      // en prenant l'échéance la plus lointaine (support du renouvellement :
+      // plusieurs licences actives peuvent se suivre dans le temps).
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const dateFin = new Date(licenseData.date_fin);
-      dateFin.setHours(23, 59, 59, 999);
+      const sorted = (licenses || [])
+        .map(l => ({ license: l, dateFin: new Date(l.date_fin) }))
+        .map(({ license, dateFin }) => {
+          dateFin.setHours(23, 59, 59, 999);
+          return { license, dateFin };
+        })
+        .filter(({ dateFin }) => dateFin >= today)
+        .sort((a, b) => b.dateFin.getTime() - a.dateFin.getTime());
 
-      if (dateFin < today) {
+      if (sorted.length === 0) {
         return { hasAccess: false, userLot };
       }
+
+      const licenseData = sorted[0].license;
       
       return {
         hasAccess: true,

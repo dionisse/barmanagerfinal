@@ -18,6 +18,11 @@ import { checkLicenseExpiration, checkUserLicenseAccess } from './utils/dataServ
 import { enhancedSyncService } from './utils/enhancedSyncService';
 import { storageService } from './utils/storageService';
 import { indexedDBService } from './utils/indexedDBService';
+import { handlePaymentReturn } from './utils/fedapayService';
+import {
+  startLicenseNotificationWatcher,
+  stopLicenseNotificationWatcher
+} from './utils/licenseNotificationService';
 
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -27,6 +32,17 @@ function App() {
   const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
+    // Retour de paiement FEDAPAY (?fedapay_return=1&id=..&status=..) :
+    // vérifie le règlement puis active automatiquement la licence.
+    handlePaymentReturn().then((result) => {
+      if (result.handled && result.message) {
+        console.log('💳 Retour FEDAPAY :', result.message);
+        alert(result.message);
+        // Recharge pour refléter la licence activée
+        window.location.reload();
+      }
+    });
+
     // Check for existing session
     const savedUser = localStorage.getItem('gobex_current_user');
     if (savedUser) {
@@ -42,7 +58,12 @@ function App() {
     // Check license status when user logs in
     if (currentUser) {
       checkLicenseStatus();
+      // Surveillance des échéances de licence (notifications J-7 / J-3 / J-0)
+      startLicenseNotificationWatcher(currentUser);
+    } else {
+      stopLicenseNotificationWatcher();
     }
+    return () => stopLicenseNotificationWatcher();
   }, [currentUser]);
 
   const validateUserSession = async (user: User) => {
@@ -203,12 +224,12 @@ function App() {
 
     // Restrict access to modules if license expired (except for owner)
     if (licenseExpired && currentUser.type !== 'Propriétaire' && currentModule !== 'dashboard') {
-      return <Dashboard user={currentUser} />;
+      return <Dashboard user={currentUser} onNavigate={setCurrentModule} />;
     }
 
     switch (currentModule) {
       case 'dashboard':
-        return <Dashboard user={currentUser} />;
+        return <Dashboard user={currentUser} onNavigate={setCurrentModule} />;
       case 'achats':
         return <AchatsModule user={currentUser} />;
       case 'ventes':
@@ -228,7 +249,7 @@ function App() {
       case 'parametres':
         return <ParametresModule user={currentUser} />;
       default:
-        return <Dashboard user={currentUser} />;
+        return <Dashboard user={currentUser} onNavigate={setCurrentModule} />;
     }
   };
 
