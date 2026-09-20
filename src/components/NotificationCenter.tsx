@@ -2,11 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, TriangleAlert as AlertTriangle, Package, Key, X, Search, TrendingUp } from 'lucide-react';
 import { getProducts, getSales, getMultiPurchases } from '../utils/dataService';
 import { Product, Sale, MultiPurchase } from '../types';
+import {
+  getActiveLicenseNotifications,
+  markLicenseInboxRead
+} from '../utils/licenseNotificationService';
 
 interface NotificationCenterProps {
   onNavigate: (module: string) => void;
   licenseDaysRemaining?: number;
   licenseExpired?: boolean;
+  userType?: string;
 }
 
 interface Notification {
@@ -21,7 +26,8 @@ interface Notification {
 const NotificationCenter: React.FC<NotificationCenterProps> = ({
   onNavigate,
   licenseDaysRemaining,
-  licenseExpired
+  licenseExpired,
+  userType
 }) => {
   const [showPanel, setShowPanel] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -31,7 +37,12 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   useEffect(() => {
     loadNotifications();
     const interval = setInterval(loadNotifications, 60000);
-    return () => clearInterval(interval);
+    // Rafraîchit dès qu'une notification d'échéance de licence est émise
+    window.addEventListener('licenseInboxUpdated', loadNotifications);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('licenseInboxUpdated', loadNotifications);
+    };
   }, [licenseDaysRemaining, licenseExpired]);
 
   useEffect(() => {
@@ -75,23 +86,37 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
         }
       });
 
-      if (licenseExpired) {
+      // ---- Notifications d'échéance de licence (jalons J-7 / J-3 / J-0) ----
+      // Source persistante : un jalon par licence, émis une seule fois.
+      const licenseInbox = getActiveLicenseNotifications();
+      if (licenseInbox.length > 0) {
+        licenseInbox.forEach(n => {
+          notifs.push({
+            id: `licinbox-${n.id}`,
+            type: 'license',
+            title: n.title,
+            message: n.message,
+            severity: n.severity,
+            module: userType === 'Propriétaire' ? 'licences' : 'dashboard'
+          });
+        });
+      } else if (licenseExpired) {
         notifs.push({
           id: 'license-expired',
           type: 'license',
           title: 'Licence expirée',
-          message: 'Votre licence a expiré. Contactez le propriétaire pour renouveler.',
+          message: 'Votre licence a expiré. Renouvelez-la en ligne depuis le tableau de bord (paiement FEDAPAY) ou contactez le propriétaire.',
           severity: 'error',
-          module: 'parametres'
+          module: 'dashboard'
         });
       } else if (licenseDaysRemaining !== undefined && licenseDaysRemaining <= 7 && licenseDaysRemaining > 0) {
         notifs.push({
           id: 'license-expiring',
           type: 'license',
           title: 'Licence bientôt expirée',
-          message: `Il reste ${licenseDaysRemaining} jour(s) avant l'expiration de la licence.`,
+          message: `Il reste ${licenseDaysRemaining} jour(s) avant l'expiration de la licence. Renouvelez-la en ligne depuis le tableau de bord.`,
           severity: 'warning',
-          module: 'parametres'
+          module: 'dashboard'
         });
       }
     } catch (error) {
@@ -127,7 +152,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
     <div className="relative">
       <button
         ref={buttonRef}
-        onClick={() => setShowPanel(!showPanel)}
+        onClick={() => {
+          const opening = !showPanel;
+          setShowPanel(opening);
+          if (opening) markLicenseInboxRead();
+        }}
         className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
         aria-label="Notifications"
       >

@@ -27,6 +27,39 @@ export interface License {
   userLot?: UserLot;
 }
 
+/** Offre commerciale d'abonnement AHANDJO (source unique de vérité des tarifs) */
+export interface LicensePlan {
+  key: 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba';
+  libelle: string;
+  duree: number; // en mois
+  prix: number;  // en FCFA
+  description: string;
+  couleur: string; // classes tailwind pour l'accent de la carte
+  economie?: string; // badge d'économie vs mensuel
+}
+
+/** Statut calculé d'une licence (centralisé pour UI, notifications et accès) */
+export interface LicenseStatusInfo {
+  status: 'active' | 'warning' | 'expired';
+  daysRemaining: number;
+  /** Jalon de notification atteint : 7, 3 ou 0 (jour d'expiration) */
+  milestone: 7 | 3 | 0 | null;
+}
+
+/** Paiement FEDAPAY d'une licence (audit + idempotence du renouvellement automatique) */
+export interface LicensePayment {
+  id?: string;
+  fedapayTransactionId: string;
+  userLotId: string;
+  licenseType: LicensePlan['key'];
+  duree: number;
+  montant: number;
+  status: 'pending' | 'completed' | 'failed' | 'canceled';
+  payerUsername: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
 export interface User {
   id: string;
   username: string;

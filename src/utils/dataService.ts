@@ -639,7 +639,8 @@ export const checkLicenseExpiration = async (): Promise<{ expired: boolean; warn
       const endDate = new Date(license.dateFin);
       endDate.setHours(23, 59, 59, 999);
 
-      const daysUntilExpiry = Math.ceil((endDate.getTime() - todayNormalized.getTime()) / (1000 * 60 * 60 * 24));
+      // Jours calendaires (floor) — cohérent avec licenseService.computeLicenseStatus
+      const daysUntilExpiry = Math.floor((endDate.getTime() - todayNormalized.getTime()) / (1000 * 60 * 60 * 24));
 
       if (daysUntilExpiry < 0) {
         hasExpired = true;

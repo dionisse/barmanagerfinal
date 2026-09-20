@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { User, Settings, License } from '../types';
-import { Settings as SettingsIcon, Building, FileText, Bell, Database, Save, Package, Activity, Download, Upload, CheckCircle, AlertTriangle, HeadphonesIcon, Mail, Phone, RefreshCw, Lock, Key, Eye, EyeOff } from 'lucide-react';
+import { Settings as SettingsIcon, Building, FileText, Bell, Database, Save, Package, Activity, Download, Upload, CheckCircle, AlertTriangle, HeadphonesIcon, Mail, Phone, RefreshCw, Lock, Key, Eye, EyeOff, CreditCard, Loader2, ShieldCheck } from 'lucide-react';
 import { getSettings, updateSettings, defaultSettings } from '../utils/dataService';
 import PackageInfo from './PackageInfo';
 import DiagnosticPanel from './DiagnosticPanel';
 import { packageManager } from '../utils/packageManager';
 import { supabase } from '../utils/supabaseService';
+import {
+  getFedapayConfig,
+  saveFedapayConfig,
+  testFedapayConnection,
+  FedapayConfig
+} from '../utils/fedapayService';
 
 interface ParametresModuleProps {
   user: User;
@@ -25,6 +31,25 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
   const [showPasswords, setShowPasswords] = useState({ managerCurrent: false, managerNew: false, managerConfirm: false, employeeNew: false, employeeConfirm: false });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  /* ----- Configuration FEDAPAY (propriétaire) ----- */
+  const [fedapayCfg, setFedapayCfg] = useState<FedapayConfig>({
+    mode: 'sandbox',
+    secretKey: '',
+    publicKey: '',
+    edgeFunctionUrl: ''
+  });
+  const [fedapayLoaded, setFedapayLoaded] = useState(false);
+  const [fedapaySaving, setFedapaySaving] = useState(false);
+  const [fedapayTesting, setFedapayTesting] = useState(false);
+  const [fedapayMsg, setFedapayMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    getFedapayConfig().then((cfg) => {
+      if (cfg) setFedapayCfg({ mode: 'sandbox', secretKey: '', publicKey: '', edgeFunctionUrl: '', ...cfg });
+      setFedapayLoaded(true);
+    });
+  }, []);
 
   useEffect(() => {
     loadSettings();
@@ -276,11 +301,29 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
     }
   };
 
+  /* ----- Actions FEDAPAY ----- */
+  const handleSaveFedapay = async () => {
+    setFedapaySaving(true);
+    setFedapayMsg(null);
+    const result = await saveFedapayConfig(fedapayCfg);
+    setFedapaySaving(false);
+    setFedapayMsg({ ok: result.success, text: result.message || 'Configuration enregistrée.' });
+  };
+
+  const handleTestFedapay = async () => {
+    setFedapayTesting(true);
+    setFedapayMsg(null);
+    const result = await testFedapayConnection(fedapayCfg);
+    setFedapayTesting(false);
+    setFedapayMsg({ ok: result.success, text: result.message });
+  };
+
   const tabs = [
     { id: 'general', name: 'Général', icon: SettingsIcon },
     { id: 'company', name: 'Entreprise', icon: Building },
     { id: 'fiscal', name: 'Fiscalité', icon: FileText },
     { id: 'notifications', name: 'Notifications', icon: Bell },
+    ...(user.type === 'Propriétaire' ? [{ id: 'fedapay', name: 'Paiements', icon: CreditCard }] : []),
     { id: 'backup', name: 'Sauvegarde', icon: Database },
     ...(user.type === 'Gestionnaire' ? [{ id: 'security', name: 'Sécurité', icon: Lock }] : []),
     { id: 'support', name: 'Support', icon: HeadphonesIcon },
@@ -897,6 +940,152 @@ const ParametresModule: React.FC<ParametresModuleProps> = ({ user }) => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'fedapay' && user.type === 'Propriétaire' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-clay-600" />
+                  Paiements FEDAPAY — achat & renouvellement de licences
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Activez le paiement en ligne (Mobile Money & carte bancaire) pour que vos clients
+                  renouvellent leur licence eux-mêmes. L'activation est <strong>automatique</strong> dès
+                  que le paiement est confirmé par FEDAPAY.
+                </p>
+              </div>
+
+              {!fedapayLoaded ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Chargement de la configuration…
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Environnement
+                      </label>
+                      <select
+                        value={fedapayCfg.mode}
+                        onChange={(e) => setFedapayCfg({ ...fedapayCfg, mode: e.target.value as 'sandbox' | 'live' })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="sandbox">Sandbox (tests)</option>
+                        <option value="live">Production (argent réel)</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Sandbox pour tester avec l'API de test : sandbox-api.fedapay.com. Production : api.fedapay.com
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Clé secrète FEDAPAY (mode direct)
+                      </label>
+                      <input
+                        type="password"
+                        value={fedapayCfg.secretKey}
+                        onChange={(e) => setFedapayCfg({ ...fedapayCfg, secretKey: e.target.value })}
+                        placeholder="sk_sandbox_… ou sk_live_…"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Tableau de bord FEDAPAY → Réglages → Clés API. Commence par « sk_ ».
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Clé publique (optionnelle)
+                      </label>
+                      <input
+                        type="text"
+                        value={fedapayCfg.publicKey || ''}
+                        onChange={(e) => setFedapayCfg({ ...fedapayCfg, publicKey: e.target.value })}
+                        placeholder="pk_…"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        URL des Edge Functions (mode serveur recommandé)
+                      </label>
+                      <input
+                        type="text"
+                        value={fedapayCfg.edgeFunctionUrl || ''}
+                        onChange={(e) => setFedapayCfg({ ...fedapayCfg, edgeFunctionUrl: e.target.value })}
+                        placeholder="https://votre-projet.supabase.co/functions/v1"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Si renseigné, les paiements passent par vos Edge Functions Supabase et la clé
+                        secrète reste sur le serveur (voir FEDAPAY_SETUP.md).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+                    <ShieldCheck className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-amber-800">
+                      <p><strong>Conseil sécurité :</strong> en mode direct, la clé secrète est partagée
+                      avec les appareils de vos clients (nécessaire pour créer les paiements). Pour une
+                      sécurité maximale, déployez les Edge Functions fournies dans
+                      <code className="mx-1 px-1 py-0.5 bg-amber-100 rounded text-xs">supabase/functions/</code>
+                      et renseignez leur URL ci-dessus : la clé restera alors côté serveur.</p>
+                    </div>
+                  </div>
+
+                  {fedapayMsg && (
+                    <div className={`rounded-lg p-4 flex items-start gap-3 border ${
+                      fedapayMsg.ok
+                        ? 'bg-green-50 border-green-200 text-green-800'
+                        : 'bg-red-50 border-red-200 text-red-700'
+                    }`}>
+                      {fedapayMsg.ok
+                        ? <CheckCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        : <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />}
+                      <span className="text-sm">{fedapayMsg.text}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={handleSaveFedapay}
+                      disabled={fedapaySaving}
+                      className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {fedapaySaving
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Save className="h-4 w-4" />}
+                      Enregistrer la configuration
+                    </button>
+                    <button
+                      onClick={handleTestFedapay}
+                      disabled={fedapayTesting}
+                      className="border-2 border-gray-300 text-gray-700 px-5 py-2.5 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {fedapayTesting
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <RefreshCw className="h-4 w-4" />}
+                      Tester la connexion
+                    </button>
+                  </div>
+
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
+                    <p className="font-semibold text-gray-800 mb-2">Comment ça marche ?</p>
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Le client voit un bandeau « Votre licence expire dans X jours » (J-7, J-3, J-0) sur son tableau de bord.</li>
+                      <li>Il clique sur « Renouveler en ligne », choisit sa formule et paie via FEDAPAY.</li>
+                      <li>De retour dans l'application, la licence est prolongée <strong>automatiquement</strong> — aucune action de votre part.</li>
+                      <li>Les paiements apparaissent dans le module Licences → section Paiements FEDAPAY.</li>
+                    </ol>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

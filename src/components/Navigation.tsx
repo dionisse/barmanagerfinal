@@ -8,6 +8,7 @@ import {
 import SyncStatusIndicator from './SyncStatusIndicator';
 import NotificationCenter, { GlobalSearch } from './NotificationCenter';
 import { Brand } from './Brand';
+import { computeLicenseStatus } from '../utils/licenseService';
 
 interface NavigationProps {
   user: User;
@@ -58,17 +59,14 @@ const Navigation: React.FC<NavigationProps> = ({
     const userLicense = user.license;
     if (!userLicense) return null;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endDate = new Date(userLicense.dateFin);
-    endDate.setHours(23, 59, 59, 999);
-    const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    // Service central : jours calendaires (expire aujourd'hui = 0)
+    const { daysRemaining, status } = computeLicenseStatus(userLicense);
 
     return {
       type: userLicense.type,
       daysRemaining: daysRemaining > 0 ? daysRemaining : 0,
-      isExpiring: daysRemaining <= 7 && daysRemaining > 0,
-      isExpired: daysRemaining <= 0
+      isExpiring: status === 'warning',
+      isExpired: status === 'expired'
     };
   };
 
@@ -206,6 +204,7 @@ const Navigation: React.FC<NavigationProps> = ({
                   onNavigate={handleModuleChange}
                   licenseDaysRemaining={licenseInfo?.daysRemaining}
                   licenseExpired={licenseInfo?.isExpired}
+                  userType={user.type}
                 />
                 <GlobalSearch onNavigate={handleModuleChange} />
               </div>

@@ -1,16 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, Sale, Product, Expense, Versement } from '../types';
-import { TrendingUp, Package, DollarSign, Percent, ArrowUp, ArrowDown, Calendar, TriangleAlert as AlertTriangle, ChartBar as BarChart3, Wallet, Download, ShoppingCart } from 'lucide-react';
+import { TrendingUp, Package, DollarSign, Percent, ArrowUp, ArrowDown, Calendar, TriangleAlert as AlertTriangle, ChartBar as BarChart3, Wallet, Download, ShoppingCart, CreditCard, BellRing, Users } from 'lucide-react';
 import { getDashboardStats, getSales, getProducts, getExpenses, getVersements, getSettings } from '../utils/dataService';
 import { generateDailyClosingPDF } from '../utils/pdfService';
+import LicenseCheckoutModal from './LicenseCheckoutModal';
+import { computeLicenseStatus, milestoneLabel } from '../utils/licenseService';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  getLicenseInbox
+} from '../utils/licenseNotificationService';
 
 interface DashboardProps {
   user: User;
+  onNavigate?: (module: string) => void;
 }
 
 type PeriodKey = 'today' | 'week' | 'month' | 'all';
 
-const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   const [stats, setStats] = useState({
     ventesJour: 0,
     stockTotal: 0,
@@ -25,6 +33,45 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const [versements, setVersements] = useState<Versement[]>([]);
   const [period, setPeriod] = useState<PeriodKey>('today');
   const [isClosing, setIsClosing] = useState(false);
+
+  /* ----- Bandeau licence : utilisateur rafraîchi en direct ----- */
+  const [liveUser, setLiveUser] = useState<User>(user);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [notifPermission, setNotifPermission] = useState(getNotificationPermission());
+  const [ownerAlerts, setOwnerAlerts] = useState(0);
+
+  useEffect(() => {
+    const refreshUser = () => {
+      try {
+        const raw = localStorage.getItem('gobex_current_user');
+        if (raw) setLiveUser(JSON.parse(raw));
+      } catch { /* ignore */ }
+    };
+    const refreshOwnerAlerts = () => {
+      setOwnerAlerts(getLicenseInbox().filter(n => !n.read).length);
+    };
+    refreshUser();
+    refreshOwnerAlerts();
+
+    window.addEventListener('userDataUpdated', refreshUser);
+    window.addEventListener('licenseRenewed', refreshUser);
+    window.addEventListener('licenseInboxUpdated', refreshOwnerAlerts);
+    return () => {
+      window.removeEventListener('userDataUpdated', refreshUser);
+      window.removeEventListener('licenseRenewed', refreshUser);
+      window.removeEventListener('licenseInboxUpdated', refreshOwnerAlerts);
+    };
+  }, []);
+
+  const licenseStatus =
+    liveUser.type !== 'Propriétaire' && liveUser.license
+      ? computeLicenseStatus(liveUser.license)
+      : null;
+
+  const enableNotifications = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifPermission(perm);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -215,6 +262,93 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* ---------- Bandeau licence : expiration / renouvellement ---------- */}
+      {licenseStatus && licenseStatus.status !== 'active' && (
+        <div className={`mb-8 rounded-xl border-2 p-5 sm:p-6 ${
+          licenseStatus.status === 'expired'
+            ? 'bg-red-50 border-red-300'
+            : 'bg-amber-50 border-amber-300'
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className={`p-3 rounded-xl flex-shrink-0 ${
+              licenseStatus.status === 'expired' ? 'bg-red-100' : 'bg-amber-100'
+            }`}>
+              <AlertTriangle className={`h-6 w-6 ${
+                licenseStatus.status === 'expired' ? 'text-red-600' : 'text-amber-600'
+              }`} />
+            </div>
+            <div className="flex-1">
+              <h3 className={`font-display font-bold text-lg ${
+                licenseStatus.status === 'expired' ? 'text-red-800' : 'text-amber-800'
+              }`}>
+                {milestoneLabel(licenseStatus.daysRemaining)}
+              </h3>
+              <p className={`text-sm mt-1 ${
+                licenseStatus.status === 'expired' ? 'text-red-700' : 'text-amber-700'
+              }`}>
+                {licenseStatus.status === 'expired'
+                  ? "Votre accès aux modules de gestion est suspendu jusqu'au renouvellement. Renouvelez en ligne en quelques secondes (Mobile Money ou carte) — votre activité reprend immédiatement."
+                  : `Licence ${liveUser.license!.type} — échéance le ${new Date(liveUser.license!.dateFin).toLocaleDateString('fr-FR')}. Renouvelez maintenant pour éviter toute interruption : le temps restant est ajouté à votre nouvelle période.`}
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+              {notifPermission === 'default' && (
+                <button
+                  onClick={enableNotifications}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-espresso-900/15 bg-white text-espresso-700 text-sm font-semibold hover:bg-cream-200 transition-colors"
+                >
+                  <BellRing className="h-4 w-4" />
+                  Activer les rappels
+                </button>
+              )}
+              <button
+                onClick={() => setShowCheckout(true)}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-clay-600 hover:bg-clay-700 text-cream-50 text-sm font-bold shadow-card transition-colors"
+              >
+                <CreditCard className="h-4 w-4" />
+                {licenseStatus.status === 'expired' ? 'Renouveler maintenant' : 'Renouveler en ligne'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- Bandeau propriétaire : licences clients à échéance ---------- */}
+      {user.type === 'Propriétaire' && ownerAlerts > 0 && (
+        <div className="mb-8 rounded-xl border-2 border-amber-300 bg-amber-50 p-5 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="p-3 rounded-xl bg-amber-100 flex-shrink-0">
+              <Users className="h-6 w-6 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-display font-bold text-lg text-amber-800">
+                {ownerAlerts} licence{ownerAlerts > 1 ? 's' : ''} client{ownerAlerts > 1 ? 's' : ''} à échéance
+              </h3>
+              <p className="text-sm text-amber-700 mt-1">
+                Des licences de vos clients expirent sous 7 jours, sous 3 jours ou aujourd'hui.
+                Consultez le module Licences pour les relancer ou les renouveler.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate?.('licences')}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-clay-600 hover:bg-clay-700 text-cream-50 text-sm font-bold shadow-card transition-colors flex-shrink-0"
+            >
+              <CreditCard className="h-4 w-4" />
+              Gérer les licences
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showCheckout && (
+        <LicenseCheckoutModal
+          user={liveUser}
+          currentLicense={liveUser.license || null}
+          onClose={() => setShowCheckout(false)}
+          onRenewed={() => setLiveUser(JSON.parse(localStorage.getItem('gobex_current_user') || 'null') || liveUser)}
+        />
+      )}
+
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-clay-600 mb-1.5">
