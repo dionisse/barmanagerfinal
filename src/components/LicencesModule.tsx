@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, License, LicenseSettings, UserLot } from '../types';
-import { Shield, Users, Calendar, Key, AlertTriangle, Clock, CheckCircle, XCircle, UserPlus, Package, Zap } from 'lucide-react';
+import { User, License, LicenseSettings, UserLot, LicensePayment } from '../types';
+import { Shield, Users, Calendar, Key, AlertTriangle, Clock, CheckCircle, XCircle, UserPlus, Package, Zap, CreditCard, TrendingUp, Receipt } from 'lucide-react';
 import { getLicenses, addLicense, updateLicense, checkLicenseExpiration, getUserLots, addUserLot, updateUserLot, deleteUserLot } from '../utils/dataService';
 import { simpleAuth } from '../utils/simpleAuthService';
 import { supabase } from '../utils/supabaseService';
+import { LICENSE_PLANS, computeLicenseStatus } from '../utils/licenseService';
+import { getLicensePayments } from '../utils/fedapayService';
+import LicenseCheckoutModal from './LicenseCheckoutModal';
 
 interface LicencesModuleProps {
   user: User;
@@ -33,13 +36,13 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
     licenseType: 'Kpêvi' as 'Kpêvi' | 'Kléoun' | 'Agbon' | 'Baba'
   });
   const [creating, setCreating] = useState(false);
+  const [payments, setPayments] = useState<LicensePayment[]>([]);
+  const [renewalTarget, setRenewalTarget] = useState<{ lot: UserLot; license: License | null } | null>(null);
 
-  const licenseSettings: LicenseSettings = {
-    Kpêvi: { duree: 1, prix: 15000 },
-    Kléoun: { duree: 3, prix: 40000 },
-    Agbon: { duree: 6, prix: 70000 },
-    Baba: { duree: 12, prix: 120000 }
-  };
+  // Tarifs centralisés — source unique : licenseService.LICENSE_PLANS
+  const licenseSettings = Object.fromEntries(
+    LICENSE_PLANS.map(p => [p.key, { duree: p.duree, prix: p.prix }])
+  ) as unknown as LicenseSettings;
 
   useEffect(() => {
     if (user.type === 'Propriétaire') {
@@ -57,9 +60,13 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
     };
 
     window.addEventListener('dataRestored', handleDataRestored);
+    // Recharge quand une licence est renouvelée (paiement FEDAPAY accepté)
+    const handleLicenseRenewed = () => loadData();
+    window.addEventListener('licenseRenewed', handleLicenseRenewed);
 
     return () => {
       window.removeEventListener('dataRestored', handleDataRestored);
+      window.removeEventListener('licenseRenewed', handleLicenseRenewed);
     };
   }, [user]);
 
@@ -131,6 +138,11 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
 
       setUserLots(formattedUserLots);
       setLicenses(formattedLicenses);
+
+      // Historique des paiements FEDAPAY (renouvellements en ligne)
+      getLicensePayments()
+        .then(setPayments)
+        .catch(() => setPayments([]));
     } catch (error) {
       console.error('❌ Erreur loadData:', error);
     }
@@ -418,32 +430,44 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
   };
 
   const getLicenseStatus = (license: License) => {
-    // Normaliser les dates à minuit pour comparer uniquement les jours
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const endDate = new Date(license.dateFin);
-    endDate.setHours(23, 59, 59, 999); // Fin de journée pour la date de fin
-
-    const daysUntilExpiry = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-    console.log(`🔍 Vérification licence ${license.type}:`, {
-      dateFin: license.dateFin,
-      today: today.toISOString(),
-      endDate: endDate.toISOString(),
-      daysUntilExpiry,
-      status: daysUntilExpiry < 0 ? 'expired' : daysUntilExpiry <= 7 ? 'warning' : 'active'
-    });
-
-    if (daysUntilExpiry < 0) return 'expired';
-    if (daysUntilExpiry <= 7) return 'warning';
-    return 'active';
+    // Délégué au service central (jours calendaires, jalons J-7/J-3/J-0)
+    return computeLicenseStatus(license).status;
   };
 
   const activeLicenses = licenses.filter(l => l.active && getLicenseStatus(l) !== 'expired');
   const availableUserLots = userLots.filter(lot => 
     !licenses.some(l => l.userLotId === lot.id && l.active && getLicenseStatus(l) !== 'expired')
   );
+
+  /** Licence courante d'un lot : celle couvrant aujourd'hui (ou la plus récente expirée) */
+  const getLotCurrentLicense = (userLotId: string): License | null => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const byLot = licenses
+      .filter(l => l.userLotId === userLotId)
+      .sort((a, b) => new Date(b.dateFin).getTime() - new Date(a.dateFin).getTime());
+    const valid = byLot.find(l => {
+      if (!l.active) return false;
+      const end = new Date(l.dateFin);
+      end.setHours(23, 59, 59, 999);
+      return end >= today;
+    });
+    return valid || byLot[0] || null;
+  };
+
+  /* Statistiques du tableau de bord licences */
+  const lotsActifs = userLots.filter(l => l.status === 'active').length;
+  const expiringSoon = activeLicenses.filter(l => {
+    const s = computeLicenseStatus(l);
+    return s.status === 'warning';
+  }).length;
+  const expiredCount = licenses.filter(l => getLicenseStatus(l) === 'expired').length;
+  const now = new Date();
+  const monthPayments = payments.filter(p => {
+    const d = new Date(p.createdAt);
+    return p.status === 'completed' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const monthRevenue = monthPayments.reduce((sum, p) => sum + p.montant, 0);
 
   // Restrict access if license expired and user is not owner
   if (licenseExpired && user.type !== 'Propriétaire') {
@@ -453,11 +477,12 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
           <XCircle className="mx-auto h-16 w-16 text-red-600 mb-4" />
           <h2 className="text-2xl font-bold text-red-800 mb-4">Licence Expirée</h2>
           <p className="text-red-700 mb-6">
-            Votre licence AHANDJO a expiré. Veuillez contacter le propriétaire pour renouveler votre abonnement.
+            Votre licence AHANDJO a expiré. Renouvelez-la en ligne en quelques secondes depuis le tableau de bord.
           </p>
           <div className="bg-white p-4 rounded-lg border border-red-200">
             <p className="text-sm text-gray-600">
-              Pour renouveler votre licence, contactez le propriétaire du système.
+              Rendez-vous sur le Tableau de bord puis cliquez sur « Renouveler maintenant » (paiement
+              sécurisé FEDAPAY — Mobile Money ou carte bancaire), ou contactez le propriétaire du système.
             </p>
           </div>
         </div>
@@ -487,6 +512,58 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
         <p className="text-gray-600 mt-2">Gérez les licences système et les lots d'utilisateurs</p>
       </div>
 
+      {/* ---------- Statistiques ---------- */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-xl shadow-lg p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Lots actifs</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{lotsActifs}</p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-blue-100">
+              <Users className="h-5 w-5 text-blue-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-lg p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Licences actives</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">{activeLicenses.length}</p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-green-100">
+              <Key className="h-5 w-5 text-green-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-lg p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Expirent sous 7j</p>
+              <p className="text-2xl font-bold text-amber-600 mt-1">{expiringSoon}</p>
+              <p className="text-xs text-gray-400">{expiredCount} expirée(s)</p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-amber-100">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-lg p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Encaissé ce mois</p>
+              <p className="text-2xl font-bold text-clay-700 mt-1">
+                {monthRevenue.toLocaleString('fr-FR')} <span className="text-sm font-medium text-gray-500">F</span>
+              </p>
+              <p className="text-xs text-gray-400">{monthPayments.length} paiement(s) FEDAPAY</p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-clay-100">
+              <TrendingUp className="h-5 w-5 text-clay-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {expirationWarning && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8">
           <div className="flex items-center space-x-3">
@@ -496,6 +573,69 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
               <p className="text-amber-700">{expirationWarning}</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ---------- Alertes d'échéance détaillées (J-7 / J-3 / J-0) ---------- */}
+      {expiringSoon + expiredCount > 0 && (
+        <div className="bg-white border-l-4 border-amber-500 rounded-xl shadow p-5 mb-8">
+          <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
+            <Clock className="h-5 w-5 text-amber-600" />
+            Échéances de licences — alertes automatiques
+          </h3>
+          <div className="space-y-2">
+            {activeLicenses
+              .filter(l => computeLicenseStatus(l).status === 'warning')
+              .map(l => {
+                const st = computeLicenseStatus(l);
+                return (
+                  <div key={l.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      st.daysRemaining <= 3 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {st.daysRemaining === 0 ? "J-0 aujourd'hui" : `J-${st.daysRemaining}`}
+                    </span>
+                    <span className="text-gray-700 flex-1">
+                      {l.userLot?.gestionnaire?.username || l.userLotId} — licence {l.type}, expire le{' '}
+                      {new Date(l.dateFin).toLocaleDateString('fr-FR')}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const lot = userLots.find(lot => lot.id === l.userLotId);
+                        if (lot) setRenewalTarget({ lot, license: l });
+                      }}
+                      className="text-clay-700 hover:text-clay-900 font-semibold text-left"
+                    >
+                      Renouveler en ligne →
+                    </button>
+                  </div>
+                );
+              })}
+            {licenses
+              .filter(l => getLicenseStatus(l) === 'expired' && l.active)
+              .slice(0, 5)
+              .map(l => (
+                <div key={l.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Expirée</span>
+                  <span className="text-gray-700 flex-1">
+                    {l.userLot?.gestionnaire?.username || l.userLotId} — licence {l.type}, expirée le{' '}
+                    {new Date(l.dateFin).toLocaleDateString('fr-FR')}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const lot = userLots.find(lot => lot.id === l.userLotId);
+                      if (lot) setRenewalTarget({ lot, license: l });
+                    }}
+                    className="text-clay-700 hover:text-clay-900 font-semibold text-left"
+                  >
+                    Renouveler en ligne →
+                  </button>
+                </div>
+              ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-3">
+            Des notifications push (J-7, J-3 et jour d'expiration) sont envoyées automatiquement aux clients concernés.
+          </p>
         </div>
       )}
 
@@ -563,15 +703,43 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
                             </span>
                           </div>
                           
-                          {/* Afficher la licence associée */}
-                          {licenses.find(l => l.userLotId === userLot.id && l.active) && (
-                            <div className="flex items-center space-x-2">
-                              <Key className="h-4 w-4 text-blue-400" />
-                              <span className="text-sm text-blue-600 font-medium">
-                                Licence: {licenses.find(l => l.userLotId === userLot.id && l.active)?.type}
-                              </span>
-                            </div>
-                          )}
+                          {/* Afficher la licence associée + échéance */}
+                          {(() => {
+                            const current = getLotCurrentLicense(userLot.id);
+                            if (!current) {
+                              return (
+                                <div className="flex items-center space-x-2">
+                                  <Key className="h-4 w-4 text-gray-400" />
+                                  <span className="text-sm text-gray-500 font-medium">Aucune licence</span>
+                                </div>
+                              );
+                            }
+                            const st = computeLicenseStatus(current);
+                            return (
+                              <div className="flex items-center space-x-2 flex-wrap">
+                                <Key className="h-4 w-4 text-blue-400" />
+                                <span className="text-sm text-blue-600 font-medium">
+                                  Licence : {current.type}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                  st.status === 'expired'
+                                    ? 'bg-red-100 text-red-700'
+                                    : st.status === 'warning'
+                                      ? 'bg-amber-100 text-amber-700'
+                                      : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {st.status === 'expired'
+                                    ? 'Expirée'
+                                    : st.daysRemaining === 0
+                                      ? "Dernier jour"
+                                      : `${st.daysRemaining} j restants`}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  jusqu'au {new Date(current.dateFin).toLocaleDateString('fr-FR')}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                       
@@ -580,23 +748,36 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
                           {userLot.status === 'active' ? 'Actif' : 'Suspendu'}
                         </span>
                         
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => toggleUserLotStatus(userLot.id)}
-                            className={`px-3 py-1 rounded text-xs font-medium ${
-                              userLot.status === 'active' 
-                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
-                                : 'bg-green-100 text-green-700 hover:bg-green-200'
-                            }`}
-                          >
-                            {userLot.status === 'active' ? 'Suspendre' : 'Activer'}
-                          </button>
-                          <button
-                            onClick={() => deleteUserLotAndUsers(userLot.id)}
-                            className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs font-medium hover:bg-red-200"
-                          >
-                            Supprimer
-                          </button>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                const current = getLotCurrentLicense(userLot.id);
+                                setRenewalTarget({ lot: userLot, license: current });
+                              }}
+                              className="px-3 py-1 rounded text-xs font-semibold bg-clay-600 text-white hover:bg-clay-700 flex items-center gap-1.5"
+                              title="Renouveler la licence de ce lot et payer via FEDAPAY"
+                            >
+                              <CreditCard className="h-3.5 w-3.5" />
+                              Renouveler en ligne
+                            </button>
+                            <button
+                              onClick={() => toggleUserLotStatus(userLot.id)}
+                              className={`px-3 py-1 rounded text-xs font-medium ${
+                                userLot.status === 'active'
+                                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+                              }`}
+                            >
+                              {userLot.status === 'active' ? 'Suspendre' : 'Activer'}
+                            </button>
+                            <button
+                              onClick={() => deleteUserLotAndUsers(userLot.id)}
+                              className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs font-medium hover:bg-red-200"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -678,6 +859,21 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
                                   Du {new Date(license.dateDebut).toLocaleDateString('fr-FR')} au {new Date(license.dateFin).toLocaleDateString('fr-FR')}
                                 </span>
                               </div>
+                              {(() => {
+                                const st = computeLicenseStatus(license);
+                                if (st.status === 'active') return null;
+                                return (
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                    st.status === 'expired' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {st.status === 'expired'
+                                      ? `Expirée depuis ${Math.abs(st.daysRemaining)} j`
+                                      : st.daysRemaining === 0
+                                        ? "Expire aujourd'hui"
+                                        : `J-${st.daysRemaining}`}
+                                  </span>
+                                );
+                              })()}
                             </div>
                             
                             <div>
@@ -708,21 +904,72 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Tarifs des Licences</h3>
             <div className="space-y-4">
-              {Object.entries(licenseSettings).map(([type, settings]) => (
-                <div key={type} className="border border-gray-200 rounded-lg p-4">
+              {LICENSE_PLANS.map((plan) => (
+                <div key={plan.key} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h4 className="font-semibold text-gray-900">{type}</h4>
-                      <p className="text-sm text-gray-600">{settings.duree} mois</p>
+                      <h4 className="font-semibold text-gray-900">{plan.key}</h4>
+                      <p className="text-sm text-gray-600">{plan.duree} mois · {plan.description}</p>
                       <p className="text-xs text-gray-500 mt-1">1 Gestionnaire + 1 Employé</p>
+                      {plan.economie && (
+                        <p className="text-xs font-semibold text-emerald-600 mt-0.5">{plan.economie}</p>
+                      )}
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-blue-600">{settings.prix.toLocaleString()} FCFA</p>
+                      <p className="font-bold text-blue-600">{plan.prix.toLocaleString('fr-FR')} FCFA</p>
+                      <p className="text-xs text-gray-400">{Math.round(plan.prix / plan.duree).toLocaleString('fr-FR')} F/mois</p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Paiements FEDAPAY — historique des renouvellements en ligne */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-clay-600" />
+              Paiements FEDAPAY
+            </h3>
+            {payments.length === 0 ? (
+              <div className="text-center py-6">
+                <CreditCard className="mx-auto h-10 w-10 text-gray-300 mb-3" />
+                <p className="text-sm text-gray-500">Aucun paiement en ligne enregistré pour l'instant.</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Les renouvellements payés via FEDAPAY apparaîtront ici automatiquement.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {payments.map((p) => {
+                  const lot = userLots.find(l => l.id === p.userLotId);
+                  return (
+                    <div key={p.id || p.fedapayTransactionId} className="flex items-center justify-between border border-gray-100 rounded-lg px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {lot?.gestionnaire?.username || p.payerUsername} — {p.licenseType} ({p.duree} mois)
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(p.createdAt).toLocaleString('fr-FR')} · tx {p.fedapayTransactionId}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-sm font-bold text-gray-900">{p.montant.toLocaleString('fr-FR')} F</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          p.status === 'completed'
+                            ? 'bg-green-100 text-green-700'
+                            : p.status === 'pending'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-red-100 text-red-700'
+                        }`}>
+                          {p.status === 'completed' ? 'Payé' : p.status === 'pending' ? 'En attente' : p.status === 'canceled' ? 'Annulé' : 'Échoué'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-6">
@@ -1075,6 +1322,18 @@ const LicencesModule: React.FC<LicencesModuleProps> = ({ user }) => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modale de renouvellement en ligne (paiement FEDAPAY) */}
+      {renewalTarget && (
+        <LicenseCheckoutModal
+          user={user}
+          userLotId={renewalTarget.lot.id}
+          lotLabel={renewalTarget.lot.gestionnaire.username}
+          currentLicense={renewalTarget.license}
+          onClose={() => setRenewalTarget(null)}
+          onRenewed={() => loadData()}
+        />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { User } from '../types';
+import { verifyPassword } from './securityService';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -27,11 +28,11 @@ class SimpleAuthService {
     try {
       console.log('🔐 Connexion:', username);
 
+      // Récupère l'utilisateur sans filtrer sur password (car hash)
       const { data: dbUser, error } = await supabase
         .from('users')
         .select('*')
         .eq('username', username)
-        .eq('password', password)
         .maybeSingle();
 
       console.log('🔐 Supabase:', error ? 'Erreur' : (dbUser ? 'Utilisateur trouvé' : 'Pas trouvé'));
@@ -45,11 +46,102 @@ class SimpleAuthService {
         return { success: false, message: 'Identifiants incorrects' };
       }
 
+      // Vérification mot de passe avec support hash + legacy plain
+      const isPasswordValid = await verifyPassword(password, dbUser.password);
+      if (!isPasswordValid) {
+        // Fallback : vérifie aussi dans user_lots (ancien système)
+        try {
+          const { data: lot } = await supabase
+            .from('user_lots')
+            .select('gestionnaire_password, employe_password, gestionnaire_username, employe_username')
+            .or(`gestionnaire_username.eq.${username},employe_username.eq.${username}`)
+            .maybeSingle();
+
+          if (lot) {
+            const lotPass = lot.gestionnaire_username === username ? lot.gestionnaire_password : lot.employe_password;
+            const lotValid = await verifyPassword(password, lotPass);
+            if (!lotValid) {
+              return { success: false, message: 'Identifiants incorrects' };
+            }
+          } else {
+            return { success: false, message: 'Identifiants incorrects' };
+          }
+        } catch {
+          return { success: false, message: 'Identifiants incorrects' };
+        }
+      }
+
+      // Vérifie si user_lot est en essai expiré -> on laisse passer mais flag read-only sera géré par TrialBanner + dataService
+      // Vérifie licence active
+      let userLotId = dbUser.user_lot_id;
+      let licenseInfo: any = null;
+
+      if (userLotId) {
+        try {
+          const { data: licenses } = await supabase
+            .from('licenses')
+            .select('*')
+            .eq('user_lot_id', userLotId)
+            .eq('active', true)
+            .order('date_fin', { ascending: false });
+
+          if (licenses && licenses.length > 0) {
+            // Trouve licence couvrant aujourd'hui ou la plus récente
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const valid = licenses.find(l => new Date(l.date_fin) >= today);
+            licenseInfo = valid || licenses[0];
+          }
+
+          // Vérifie statut user_lot
+          const { data: ul } = await supabase
+            .from('user_lots')
+            .select('is_trial, trial_ends_at, status')
+            .eq('id', userLotId)
+            .maybeSingle();
+
+          if (ul) {
+            if (ul.status === 'suspended') {
+              return { success: false, message: 'Compte suspendu. Contactez le support.' };
+            }
+            // Si essai expiré et pas de licence valide, on autorise quand même en lecture seule (bloqué dans dataService)
+          }
+        } catch (e) {
+          console.warn('⚠️ Vérif licence échouée (non bloquant):', e);
+        }
+      }
+
+      // Propriétaire : accès illimité
+      if (dbUser.role === 'Propriétaire' || username === 'gobexpropriétaire') {
+        const user: User = {
+          id: dbUser.id || 'owner-001',
+          username: dbUser.username,
+          type: dbUser.role || 'Propriétaire',
+          dateCreation: dbUser.created_at || new Date().toISOString(),
+          userLotId: null
+        };
+        console.log('👑 Propriétaire connecté');
+        return { success: true, user, message: 'Connexion réussie' };
+      }
+
       const user: User = {
         id: dbUser.id,
         username: dbUser.username,
         type: dbUser.role,
-        dateCreation: dbUser.created_at || new Date().toISOString()
+        dateCreation: dbUser.created_at || new Date().toISOString(),
+        userLotId: userLotId,
+        license: licenseInfo ? {
+          id: licenseInfo.id,
+          type: licenseInfo.license_type,
+          duree: licenseInfo.duree,
+          prix: licenseInfo.prix,
+          dateDebut: licenseInfo.date_debut,
+          dateFin: licenseInfo.date_fin,
+          cle: licenseInfo.cle,
+          active: licenseInfo.active,
+          userLotId: licenseInfo.user_lot_id,
+          isTrial: !!licenseInfo.is_trial
+        } as any : undefined
       };
 
       console.log('✅ Connecté:', user.username, '- Type:', user.type);
@@ -60,7 +152,7 @@ class SimpleAuthService {
         message: 'Connexion réussie'
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur:', error);
       return { success: false, message: 'Erreur inattendue' };
     }
@@ -82,6 +174,10 @@ class SimpleAuthService {
     try {
       console.log('📝 Création lot utilisateurs + licence');
 
+      const { hashPassword } = await import('./securityService');
+      const hashedGestionnaire = await hashPassword(gestionnairePassword);
+      const hashedEmploye = await hashPassword(employePassword);
+
       const { data: existingUsers, error: checkError } = await supabase
         .from('users')
         .select('username')
@@ -99,7 +195,7 @@ class SimpleAuthService {
       const { data: existingLots, error: lotsCheckError } = await supabase
         .from('user_lots')
         .select('gestionnaire_username, employe_username')
-        .or(`gestionnaire_username.eq.${gestionnaireUsername},employe_username.eq.${employeUsername},gestionnaire_username.eq.${employeUsername},employe_username.eq.${gestionnaireUsername}`);
+        .or(`gestionnaire_username.eq.${gestionnaireUsername},employe_username.eq.${employeUsername},gestionnaire_username.eq.${gestionnaireUsername},employe_username.eq.${employeUsername}`);
 
       if (lotsCheckError) throw lotsCheckError;
 
@@ -124,9 +220,9 @@ class SimpleAuthService {
         .insert([{
           id: userLotId,
           gestionnaire_username: gestionnaireUsername,
-          gestionnaire_password: gestionnairePassword,
+          gestionnaire_password: hashedGestionnaire,
           employe_username: employeUsername,
-          employe_password: employePassword,
+          employe_password: hashedEmploye,
           date_creation: dateDebut.toISOString(),
           status: 'active'
         }]);
@@ -167,14 +263,14 @@ class SimpleAuthService {
         .insert([
           {
             username: gestionnaireUsername,
-            password: gestionnairePassword,
+            password: hashedGestionnaire,
             email: `${gestionnaireUsername}@gobex.local`,
             role: 'Gestionnaire',
             user_lot_id: userLotId
           },
           {
             username: employeUsername,
-            password: employePassword,
+            password: hashedEmploye,
             email: `${employeUsername}@gobex.local`,
             role: 'Employé',
             user_lot_id: userLotId
@@ -195,7 +291,7 @@ class SimpleAuthService {
         message: 'Lot d\'utilisateurs et licence créés avec succès'
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur création complète:', error);
       return {
         success: false,
