@@ -1,18 +1,17 @@
 /**
  * ============================================================================
- * SERVICE D'INSCRIPTION CLIENT — AHANDJO
+ * SERVICE D'INSCRIPTION CLIENT — AHANDJO (robuste ancien schéma)
  * ============================================================================
  * - Génération d'identifiant à partir du nom du bar
  * - Vérification de disponibilité
- * - Envoi de code WhatsApp avant approbation
  * - Création du lot + utilisateurs + licence d'essai 7 jours
+ * - Fallback si colonnes manquantes (bar_address, email, is_trial...)
  * - Notifications Email / WhatsApp
  * ============================================================================
  */
 import { supabase } from './supabaseService';
-import { RegistrationData, BarProfile, License } from '../types';
+import { RegistrationData } from '../types';
 import { generateUniqueUsername, isUsernameAvailable, hashPassword, generateVerificationCode } from './securityService';
-import { sendWhatsappVerification, sendRegistrationNotification } from './notificationService';
 import { createTrialLicense } from './trialService';
 
 const VERIFICATION_KEY_PREFIX = 'ahandjo_verif_';
@@ -27,9 +26,6 @@ export interface RegistrationResult {
   verificationId?: string;
 }
 
-/* ---------------------------------------------------------------------------
- * Gestion des codes de vérification (local + Supabase)
- * ------------------------------------------------------------------------- */
 interface StoredVerification {
   id: string;
   identifier: string;
@@ -41,7 +37,6 @@ interface StoredVerification {
 
 function storeVerificationLocal(verification: StoredVerification) {
   localStorage.setItem(`${VERIFICATION_KEY_PREFIX}${verification.id}`, JSON.stringify(verification));
-  // Pour dev : dernier code en clair
   localStorage.setItem('ahandjo_last_verification_code', verification.code);
 }
 
@@ -62,7 +57,7 @@ export async function createVerificationCode(identifier: string, type: 'whatsapp
   try {
     const code = generateVerificationCode();
     const verificationId = `VERIF-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     const verification: StoredVerification = {
       id: verificationId,
@@ -75,7 +70,6 @@ export async function createVerificationCode(identifier: string, type: 'whatsapp
 
     storeVerificationLocal(verification);
 
-    // Supabase (si table existe)
     try {
       if (navigator.onLine) {
         await supabase.from('verification_codes').upsert({
@@ -93,7 +87,6 @@ export async function createVerificationCode(identifier: string, type: 'whatsapp
       console.warn('⚠️ verification_codes table indisponible, fallback local:', e);
     }
 
-    // Envoi via WhatsApp / Email
     const { sendNotification } = await import('./notificationService');
     await sendNotification({
       to: identifier,
@@ -103,8 +96,7 @@ export async function createVerificationCode(identifier: string, type: 'whatsapp
     });
 
     console.log(`📱 Code vérification pour ${identifier}: ${code} (ID: ${verificationId})`);
-
-    return { success: true, verificationId, code }; // code retourné pour dev, en prod on ne le retournerait pas
+    return { success: true, verificationId, code };
   } catch (e: any) {
     return { success: false, message: e.message || 'Erreur création code' };
   }
@@ -114,7 +106,6 @@ export async function verifyCode(verificationId: string, inputCode: string): Pro
   try {
     let verification = getVerificationLocal(verificationId);
 
-    // Fallback Supabase si local non trouvé
     if (!verification && navigator.onLine) {
       try {
         const { data } = await supabase
@@ -158,14 +149,12 @@ export async function verifyCode(verificationId: string, inputCode: string): Pro
 
     if (verification.code !== inputCode.trim()) {
       storeVerificationLocal(verification);
-      // Update Supabase
       try {
         await supabase.from('verification_codes').update({ attempts: verification.attempts }).eq('id', verificationId);
       } catch {}
       return { success: false, message: `Code incorrect (${verification.attempts}/5 tentatives)` };
     }
 
-    // Code correct
     verification.verified = true;
     storeVerificationLocal(verification);
 
@@ -179,9 +168,6 @@ export async function verifyCode(verificationId: string, inputCode: string): Pro
   }
 }
 
-/* ---------------------------------------------------------------------------
- * Génération d'identifiant et vérification
- * ------------------------------------------------------------------------- */
 export async function suggestUsername(barName: string): Promise<string> {
   return await generateUniqueUsername(barName);
 }
@@ -195,11 +181,10 @@ export async function checkUsername(username: string): Promise<{ available: bool
 }
 
 /* ---------------------------------------------------------------------------
- * Inscription complète
+ * Inscription complète - VERSION ROBUSTE
  * ------------------------------------------------------------------------- */
 export async function registerNewClient(data: RegistrationData, verificationId?: string): Promise<RegistrationResult> {
   try {
-    // 1. Validations de base
     if (!data.barName || !data.managerFullName || !data.phone || !data.whatsapp || !data.email || !data.username || !data.password) {
       return { success: false, message: 'Tous les champs sont requis' };
     }
@@ -208,7 +193,6 @@ export async function registerNewClient(data: RegistrationData, verificationId?:
       return { success: false, message: 'Les mots de passe ne correspondent pas' };
     }
 
-    // 2. Vérifie que le code WhatsApp a été vérifié si fourni
     if (verificationId) {
       const verif = getVerificationLocal(verificationId);
       if (!verif || !verif.verified) {
@@ -216,13 +200,12 @@ export async function registerNewClient(data: RegistrationData, verificationId?:
       }
     }
 
-    // 3. Vérifie disponibilité username
     const available = await isUsernameAvailable(data.username);
     if (!available) {
       return { success: false, message: `L'identifiant "${data.username}" est déjà pris, choisissez-en un autre` };
     }
 
-    // 4. Vérifie email/phone déjà utilisés
+    // Vérifie doublons si possible (résilient ancien schéma)
     if (navigator.onLine) {
       try {
         const { data: existingLots } = await supabase
@@ -232,7 +215,7 @@ export async function registerNewClient(data: RegistrationData, verificationId?:
           .limit(1);
 
         if (existingLots && existingLots.length > 0) {
-          const existing = existingLots[0];
+          const existing = existingLots[0] as any;
           if (existing.email === data.email) {
             return { success: false, message: 'Cet email est déjà utilisé' };
           }
@@ -240,22 +223,31 @@ export async function registerNewClient(data: RegistrationData, verificationId?:
             return { success: false, message: 'Ce numéro est déjà utilisé' };
           }
         }
-      } catch (e) {
-        console.warn('⚠️ Vérification doublon échouée (non bloquant):', e);
+      } catch (e: any) {
+        console.warn('⚠️ Vérif doublon étendue échouée (ancien schéma):', e?.message);
+        try {
+          const { data: existingByUsername } = await supabase
+            .from('user_lots')
+            .select('id')
+            .or(`gestionnaire_username.eq.${data.username},employe_username.eq.${data.username}`)
+            .limit(1);
+          if (existingByUsername && existingByUsername.length > 0) {
+            return { success: false, message: `L'identifiant "${data.username}" est déjà pris` };
+          }
+        } catch {}
       }
     }
 
-    // 5. Hache le mot de passe
     const hashedPassword = await hashPassword(data.password);
 
-    // 6. Crée le lot d'utilisateurs avec infos bar
-    const userLotId = `UL-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    // UUID pour compatibilité ancien schéma (id UUID)
+    const generatedId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : `UL-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     const now = new Date();
     const trialEndsAt = new Date(now);
     trialEndsAt.setDate(trialEndsAt.getDate() + 7);
 
-    const userLotData = {
-      id: userLotId,
+    const fullLot = {
+      id: generatedId,
       gestionnaire_username: data.username,
       gestionnaire_password: hashedPassword,
       employe_username: `${data.username}_emp`,
@@ -273,69 +265,153 @@ export async function registerNewClient(data: RegistrationData, verificationId?:
       registration_status: 'active'
     };
 
-    // 7. Insertion Supabase
+    const minimalLot = {
+      id: generatedId,
+      gestionnaire_username: data.username,
+      gestionnaire_password: hashedPassword,
+      employe_username: `${data.username}_emp`,
+      employe_password: hashedPassword,
+      date_creation: now.toISOString(),
+      status: 'active'
+    };
+
+    let effectiveLotId = generatedId;
+
     if (navigator.onLine) {
-      const { error: lotError } = await supabase.from('user_lots').insert([userLotData]);
+      let lotOk = false;
 
-      if (lotError) {
-        console.error('❌ Erreur création user_lot:', lotError);
-        return { success: false, message: `Erreur création compte: ${lotError.message}` };
-      }
+      // Tentative complète
+      try {
+        const { data: inserted, error } = await supabase.from('user_lots').insert([fullLot]).select('id').maybeSingle();
+        if (error) throw error;
+        effectiveLotId = inserted?.id || generatedId;
+        lotOk = true;
+        console.log('✅ user_lots complet OK');
+      } catch (err: any) {
+        const msg = err?.message || '';
+        console.warn('⚠️ user_lots complet échoué:', msg);
+        const isMissingColumn = msg.includes('bar_address') || msg.includes('bar_name') || msg.includes('Could not find') || msg.includes('column') || msg.includes('schema cache') || msg.includes('is_trial') || msg.includes('email') || msg.includes('phone') || msg.includes('whatsapp');
 
-      // 8. Crée la licence d'essai 7 jours
-      const trialLicense = createTrialLicense(userLotId);
-
-      const { error: licenseError } = await supabase.from('licenses').insert([{
-        id: trialLicense.id,
-        license_type: 'Essai',
-        duree: 0,
-        prix: 0,
-        date_debut: trialLicense.dateDebut,
-        date_fin: trialLicense.dateFin,
-        cle: trialLicense.cle,
-        active: true,
-        user_lot_id: userLotId,
-        is_trial: true
-      }]);
-
-      if (licenseError) {
-        console.error('❌ Erreur création licence essai:', licenseError);
-        // Rollback lot
-        await supabase.from('user_lots').delete().eq('id', userLotId);
-        return { success: false, message: `Erreur création licence: ${licenseError.message}` };
-      }
-
-      // 9. Crée les utilisateurs
-      const employeUsername = `${data.username}_emp`;
-      const { error: usersError } = await supabase.from('users').insert([
-        {
-          username: data.username,
-          password: hashedPassword,
-          email: data.email,
-          role: 'Gestionnaire',
-          user_lot_id: userLotId
-        },
-        {
-          username: employeUsername,
-          password: hashedPassword,
-          email: `${employeUsername}@gobex.local`,
-          role: 'Employé',
-          user_lot_id: userLotId
+        if (isMissingColumn) {
+          try {
+            const { data: insertedMin, error: errMin } = await supabase.from('user_lots').insert([minimalLot]).select('id').maybeSingle();
+            if (errMin) throw errMin;
+            effectiveLotId = insertedMin?.id || generatedId;
+            lotOk = true;
+            console.log('✅ user_lots minimal OK (ancien schéma)');
+            try {
+              localStorage.setItem(`ahandjo_bar_info_${effectiveLotId}`, JSON.stringify({
+                bar_name: data.barName,
+                bar_address: data.barAddress,
+                manager_fullname: data.managerFullName,
+                phone: data.phone,
+                whatsapp: data.whatsapp,
+                email: data.email
+              }));
+            } catch {}
+          } catch (err2: any) {
+            console.warn('⚠️ user_lots minimal échoué, essai sans id:', err2.message);
+            try {
+              const { data: autoLot, error: autoErr } = await supabase.from('user_lots').insert([{
+                gestionnaire_username: data.username,
+                gestionnaire_password: hashedPassword,
+                employe_username: `${data.username}_emp`,
+                employe_password: hashedPassword,
+                status: 'active'
+              }]).select('id').single();
+              if (autoErr) throw autoErr;
+              effectiveLotId = autoLot.id;
+              lotOk = true;
+              console.log('✅ user_lots auto-id OK');
+            } catch (err3: any) {
+              return { success: false, message: `Erreur création compte: ${err3.message}. SOLUTION: Exécutez le fichier FIX_MISSING_COLUMNS.sql dans Supabase > SQL Editor` };
+            }
+          }
+        } else {
+          return { success: false, message: `Erreur création compte: ${msg}` };
         }
-      ]);
-
-      if (usersError) {
-        console.error('❌ Erreur création users:', usersError);
-        await supabase.from('licenses').delete().eq('user_lot_id', userLotId);
-        await supabase.from('user_lots').delete().eq('id', userLotId);
-        return { success: false, message: `Erreur création utilisateurs: ${usersError.message}` };
       }
 
-      // 10. Crée le profil bar (si table existe)
+      if (!lotOk) {
+        return { success: false, message: 'Impossible de créer le compte (user_lots)' };
+      }
+
+      // Licence d'essai - résilient
+      const trialLicense = createTrialLicense(effectiveLotId);
+      let licOk = false;
+
+      const licenseAttempts = [
+        { id: trialLicense.id, license_type: 'Essai', duree: 0, prix: 0, date_debut: trialLicense.dateDebut, date_fin: trialLicense.dateFin, cle: trialLicense.cle, active: true, user_lot_id: effectiveLotId, is_trial: true },
+        { id: trialLicense.id, license_type: 'Essai', duree: 0, prix: 0, date_debut: trialLicense.dateDebut, date_fin: trialLicense.dateFin, cle: trialLicense.cle, active: true, user_lot_id: effectiveLotId },
+        { license_type: 'Kpêvi', duree: 1, prix: 0, date_debut: trialLicense.dateDebut, date_fin: trialLicense.dateFin, cle: trialLicense.cle, active: true, user_lot_id: effectiveLotId }
+      ];
+
+      for (const licPayload of licenseAttempts) {
+        try {
+          const { error } = await supabase.from('licenses').insert([licPayload as any]);
+          if (error) throw error;
+          licOk = true;
+          console.log('✅ licence créée:', (licPayload as any).license_type);
+          break;
+        } catch (e: any) {
+          console.warn('⚠️ licence échouée', (licPayload as any).license_type, e.message);
+        }
+      }
+
+      if (!licOk) {
+        await supabase.from('user_lots').delete().eq('id', effectiveLotId);
+        return { success: false, message: 'Erreur création licence. Exécutez FIX_MISSING_COLUMNS.sql' };
+      }
+
+      // Users - résilient multi-schémas
+      const empUsername = `${data.username}_emp`;
+      const userAttempts = [
+        [
+          { username: data.username, password: hashedPassword, email: data.email, role: 'Gestionnaire', user_lot_id: effectiveLotId },
+          { username: empUsername, password: hashedPassword, email: `${empUsername}@gobex.local`, role: 'Employé', user_lot_id: effectiveLotId }
+        ],
+        [
+          { username: data.username, password: hashedPassword, role: 'Gestionnaire', user_lot_id: effectiveLotId },
+          { username: empUsername, password: hashedPassword, role: 'Employé', user_lot_id: effectiveLotId }
+        ],
+        [
+          { username: data.username, password: hashedPassword, type: 'Gestionnaire', user_lot_id: effectiveLotId },
+          { username: empUsername, password: hashedPassword, type: 'Employé', user_lot_id: effectiveLotId }
+        ],
+        [
+          { username: data.username, password: hashedPassword, email: data.email, type: 'Gestionnaire', user_lot_id: effectiveLotId },
+          { username: empUsername, password: hashedPassword, email: `${empUsername}@gobex.local`, type: 'Employé', user_lot_id: effectiveLotId }
+        ],
+        [
+          { username: data.username, password: hashedPassword, user_lot_id: effectiveLotId },
+          { username: empUsername, password: hashedPassword, user_lot_id: effectiveLotId }
+        ]
+      ];
+
+      let usersOk = false;
+      for (const payload of userAttempts) {
+        try {
+          const { error } = await supabase.from('users').insert(payload as any);
+          if (error) throw error;
+          usersOk = true;
+          console.log('✅ users OK avec', Object.keys(payload[0]));
+          break;
+        } catch (e: any) {
+          console.warn('⚠️ users échoué avec', Object.keys(payload[0]), e.message);
+        }
+      }
+
+      if (!usersOk) {
+        await supabase.from('licenses').delete().eq('user_lot_id', effectiveLotId);
+        await supabase.from('user_lots').delete().eq('id', effectiveLotId);
+        return { success: false, message: 'Erreur création utilisateurs: schéma incompatible. Exécutez FIX_MISSING_COLUMNS.sql' };
+      }
+
+      // bar_profiles si table existe (non bloquant)
       try {
         await supabase.from('bar_profiles').insert([{
-          id: `BP-${userLotId}`,
-          user_lot_id: userLotId,
+          id: `BP-${effectiveLotId}`,
+          user_lot_id: effectiveLotId,
           bar_name: data.barName,
           bar_address: data.barAddress,
           manager_fullname: data.managerFullName,
@@ -349,87 +425,88 @@ export async function registerNewClient(data: RegistrationData, verificationId?:
           date_creation: now.toISOString()
         }]);
       } catch (e) {
-        console.warn('⚠️ bar_profiles non créée (table manquante, non bloquant):', e);
+        console.warn('⚠️ bar_profiles non créée (non bloquant):', e);
       }
+
+      // Notification bienvenue
+      try {
+        const { sendRegistrationNotification } = await import('./notificationService');
+        await sendRegistrationNotification({
+          barName: data.barName,
+          managerName: data.managerFullName,
+          username: data.username,
+          email: data.email,
+          whatsapp: data.whatsapp,
+          trialEndsAt: trialEndsAt.toISOString()
+        });
+      } catch (e) {
+        console.warn('⚠️ Notification échouée (non bloquant):', e);
+      }
+
+      try {
+        const localUsers = JSON.parse(localStorage.getItem('ahandjo_local_usernames') || '[]');
+        localUsers.push(data.username, `${data.username}_emp`);
+        localStorage.setItem('ahandjo_local_usernames', JSON.stringify(localUsers));
+      } catch {}
+
+      if (verificationId) removeVerificationLocal(verificationId);
+
+      console.log(`✅ Inscription réussie: ${data.username} - Bar: ${data.barName}`);
+
+      return {
+        success: true,
+        message: `Bienvenue ${data.managerFullName} ! Votre bar "${data.barName}" est créé. 7 jours d'essai gratuit.`,
+        userLotId: effectiveLotId,
+        username: data.username
+      };
     } else {
-      // Hors ligne : sauvegarde locale pour sync plus tard
       const pending = JSON.parse(localStorage.getItem(PENDING_REG_KEY) || '[]');
-      pending.push({ ...userLotData, password_plain: data.password }); // plain pour dev offline
+      pending.push({ ...fullLot, password_plain: data.password });
       localStorage.setItem(PENDING_REG_KEY, JSON.stringify(pending));
-      console.log('📴 Hors ligne - inscription mise en attente');
+      return {
+        success: true,
+        message: `Inscription hors ligne mise en attente pour "${data.barName}"`,
+        userLotId: generatedId,
+        username: data.username
+      };
     }
-
-    // 11. Notifications Email / WhatsApp
-    try {
-      await sendRegistrationNotification({
-        barName: data.barName,
-        managerName: data.managerFullName,
-        username: data.username,
-        email: data.email,
-        whatsapp: data.whatsapp,
-        trialEndsAt: trialEndsAt.toISOString()
-      });
-    } catch (e) {
-      console.warn('⚠️ Notification inscription échouée (non bloquant):', e);
-    }
-
-    // 12. Sauvegarde locale des usernames pour vérification rapide
-    try {
-      const localUsers = JSON.parse(localStorage.getItem('ahandjo_local_usernames') || '[]');
-      localUsers.push(data.username, `${data.username}_emp`);
-      localStorage.setItem('ahandjo_local_usernames', JSON.stringify(localUsers));
-    } catch {}
-
-    // Nettoie la vérification
-    if (verificationId) {
-      removeVerificationLocal(verificationId);
-    }
-
-    console.log(`✅ Inscription réussie: ${data.username} - Bar: ${data.barName} - Essai jusqu'au ${trialEndsAt.toLocaleDateString('fr-FR')}`);
-
-    return {
-      success: true,
-      message: `Bienvenue ${data.managerFullName} ! Votre bar "${data.barName}" est créé. Vous avez 7 jours d'essai gratuit.`,
-      userLotId,
-      username: data.username
-    };
   } catch (e: any) {
     console.error('❌ registerNewClient error:', e);
     return { success: false, message: e.message || 'Erreur lors de l\'inscription' };
   }
 }
 
-/* ---------------------------------------------------------------------------
- * Réinitialisation de mot de passe
- * ------------------------------------------------------------------------- */
 export async function requestPasswordReset(identifier: string): Promise<{ success: boolean; resetId?: string; message?: string }> {
   try {
-    // identifier peut être username, email, phone ou whatsapp
     let userLot: any = null;
     let user: any = null;
 
     if (navigator.onLine) {
-      // Cherche dans user_lots par email/phone/whatsapp
-      const { data: lots } = await supabase
-        .from('user_lots')
-        .select('*')
-        .or(`email.eq.${identifier},phone.eq.${identifier},whatsapp.eq.${identifier},gestionnaire_username.eq.${identifier}`)
-        .maybeSingle();
+      try {
+        const { data: lots } = await supabase
+          .from('user_lots')
+          .select('*')
+          .or(`email.eq.${identifier},phone.eq.${identifier},whatsapp.eq.${identifier},gestionnaire_username.eq.${identifier}`)
+          .maybeSingle();
+        if (lots) userLot = lots;
+      } catch {
+        try {
+          const { data: lots2 } = await supabase.from('user_lots').select('*').or(`gestionnaire_username.eq.${identifier},employe_username.eq.${identifier}`).maybeSingle();
+          if (lots2) userLot = lots2;
+        } catch {}
+      }
 
-      if (lots) userLot = lots;
-
-      // Cherche aussi dans users
-      const { data: users } = await supabase
-        .from('users')
-        .select('*')
-        .or(`username.eq.${identifier},email.eq.${identifier}`)
-        .maybeSingle();
-
-      if (users) user = users;
+      try {
+        const { data: users } = await supabase
+          .from('users')
+          .select('*')
+          .or(`username.eq.${identifier},email.eq.${identifier}`)
+          .maybeSingle();
+        if (users) user = users;
+      } catch {}
     }
 
     if (!userLot && !user) {
-      // Ne révèle pas si l'utilisateur existe ou non (sécurité)
       return { success: true, message: 'Si ce compte existe, un code a été envoyé' };
     }
 
@@ -438,9 +515,8 @@ export async function requestPasswordReset(identifier: string): Promise<{ succes
 
     const code = generateVerificationCode();
     const resetId = `RST-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    // Stocke localement
     localStorage.setItem(`ahandjo_reset_${resetId}`, JSON.stringify({
       id: resetId,
       identifier,
@@ -450,7 +526,6 @@ export async function requestPasswordReset(identifier: string): Promise<{ succes
     }));
     localStorage.setItem('ahandjo_last_reset_code', code);
 
-    // Supabase
     try {
       await supabase.from('password_resets').upsert({
         id: resetId,
@@ -465,7 +540,6 @@ export async function requestPasswordReset(identifier: string): Promise<{ succes
       console.warn('⚠️ password_resets table indisponible:', e);
     }
 
-    // Envoi code via WhatsApp prioritaire, sinon Email
     const { sendNotification } = await import('./notificationService');
 
     if (targetWhatsapp) {
@@ -485,7 +559,6 @@ export async function requestPasswordReset(identifier: string): Promise<{ succes
     }
 
     console.log(`🔑 Code reset pour ${identifier}: ${code} (ID: ${resetId})`);
-
     return { success: true, resetId, message: 'Code envoyé via WhatsApp / Email' };
   } catch (e: any) {
     return { success: false, message: e.message || 'Erreur' };
@@ -548,25 +621,28 @@ export async function resetPassword(resetId: string, code: string, newPassword: 
     const hashedPassword = await hashPassword(newPassword);
 
     if (navigator.onLine) {
-      // Met à jour dans user_lots
-      await supabase.from('user_lots')
-        .update({ gestionnaire_password: hashedPassword })
-        .or(`gestionnaire_username.eq.${identifier},email.eq.${identifier},phone.eq.${identifier},whatsapp.eq.${identifier}`);
+      try {
+        await supabase.from('user_lots')
+          .update({ gestionnaire_password: hashedPassword } as any)
+          .or(`gestionnaire_username.eq.${identifier},email.eq.${identifier},phone.eq.${identifier},whatsapp.eq.${identifier}`);
+      } catch {
+        try {
+          await supabase.from('user_lots').update({ gestionnaire_password: hashedPassword } as any).or(`gestionnaire_username.eq.${identifier},employe_username.eq.${identifier}`);
+        } catch {}
+      }
 
-      // Met à jour dans users
-      await supabase.from('users')
-        .update({ password: hashedPassword })
-        .or(`username.eq.${identifier},email.eq.${identifier}`);
+      try {
+        await supabase.from('users').update({ password: hashedPassword } as any).or(`username.eq.${identifier},email.eq.${identifier}`);
+      } catch {}
 
-      // Marque le token comme utilisé
-      await supabase.from('password_resets').update({ used: true }).eq('id', resetId);
+      try {
+        await supabase.from('password_resets').update({ used: true }).eq('id', resetId);
+      } catch {}
     }
 
-    // Marque local comme utilisé
     stored.used = true;
     localStorage.setItem(`ahandjo_reset_${resetId}`, JSON.stringify(stored));
 
-    // Nettoie les tentatives de login bloquées
     try {
       const { recordSuccessfulLogin } = await import('./securityService');
       recordSuccessfulLogin(identifier);
