@@ -1,0 +1,14 @@
+[project]
+id = "ahandjo"
+
+[functions.fedapay-checkout]
+verify_jwt = false
+
+[functions.fedapay-verify]
+verify_jwt = false
+
+[functions.fedapay-webhook]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false

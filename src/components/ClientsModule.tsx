@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Client } from '../types';
-import { Plus, Search, CreditCard as Edit, Trash2, Users, Phone, MapPin, Wallet, TrendingUp, UserPlus, CircleAlert as AlertCircle } from 'lucide-react';
+import { Plus, Search, CreditCard as Edit, Trash2, Users, Phone, MapPin, Wallet, TrendingUp, UserPlus, CircleAlert as AlertCircle, MessageCircle } from 'lucide-react';
 import { getClients, addClient, updateClient, deleteClient, getSales } from '../utils/dataService';
+import { getWhatsappLink } from '../utils/whatsappService';
 
 interface ClientsModuleProps {
   user: User;
@@ -28,7 +29,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
 
   useEffect(() => {
     loadData();
-
     const handleDataRestored = () => loadData();
     window.addEventListener('dataRestored', handleDataRestored);
     return () => window.removeEventListener('dataRestored', handleDataRestored);
@@ -37,7 +37,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
   const loadData = async () => {
     const clientsData = await getClients();
     const salesData = await getSales();
-
     const enriched: ClientWithStats[] = clientsData.map(client => {
       const clientSales = salesData.filter(s =>
         s.client.toLowerCase().includes(client.nom.toLowerCase())
@@ -48,7 +47,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
         nombreAchats: clientSales.length
       };
     });
-
     setClients(enriched);
   };
 
@@ -71,7 +69,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const clientData: Client = {
       id: editingClient?.id || Date.now().toString(),
       nom: formData.nom,
@@ -81,13 +78,11 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
       notes: formData.notes,
       dateCreation: editingClient?.dateCreation || new Date().toISOString()
     };
-
     if (editingClient) {
       await updateClient(clientData);
     } else {
       await addClient(clientData);
     }
-
     resetForm();
     setShowForm(false);
     loadData();
@@ -103,7 +98,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
   const handleSettleDebt = async (client: Client) => {
     if (client.soldeDette <= 0) return;
     if (!window.confirm(`Marquer la dette de ${client.soldeDette.toLocaleString()} FCFA comme réglée pour ${client.nom} ?`)) return;
-
     await updateClient({ ...client, soldeDette: 0 });
     loadData();
   };
@@ -122,7 +116,7 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-          <p className="text-gray-600 mt-2">Gérez votre base de clients et suivez les dettes</p>
+          <p className="text-gray-600 mt-2">Gérez votre base de clients et suivez les dettes — WhatsApp wa.me 0€ intégré</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -133,7 +127,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between">
@@ -174,7 +167,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Search */}
       <div className="bg-white rounded-xl shadow-lg mb-6">
         <div className="p-6 border-b border-gray-200">
           <div className="relative">
@@ -189,7 +181,6 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
           </div>
         </div>
 
-        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -217,12 +208,8 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
                       <span className="text-sm font-medium text-gray-900">{client.nom}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {client.telephone || '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {client.adresse || '—'}
-                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.telephone || '—'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{client.adresse || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className="font-medium text-green-600">{client.totalAchats.toLocaleString()} FCFA</span>
                     <span className="text-xs text-gray-400 ml-1">({client.nombreAchats})</span>
@@ -236,27 +223,26 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center space-x-2">
-                      {client.soldeDette > 0 && (
-                        <button
-                          onClick={() => handleSettleDebt(client)}
-                          className="text-emerald-600 hover:text-emerald-900 p-1 rounded"
-                          title="Régler la dette"
+                      {client.telephone && (
+                        <a
+                          href={getWhatsappLink(client.telephone, `Bonjour ${client.nom} 👋\n\nC'est le bar. ${client.soldeDette > 0 ? `Petit rappel dette ${client.soldeDette.toLocaleString()} FCFA.` : 'Merci pour votre fidélité !'}\n\nÀ bientôt !`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#25D366] hover:text-[#128C7E] p-1 rounded bg-[#25D366]/10"
+                          title="WhatsApp via wa.me (0€)"
                         >
+                          <MessageCircle className="h-4 w-4" />
+                        </a>
+                      )}
+                      {client.soldeDette > 0 && (
+                        <button onClick={() => handleSettleDebt(client)} className="text-emerald-600 hover:text-emerald-900 p-1 rounded" title="Régler dette">
                           <Wallet className="h-4 w-4" />
                         </button>
                       )}
-                      <button
-                        onClick={() => handleEdit(client)}
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                        title="Modifier"
-                      >
+                      <button onClick={() => handleEdit(client)} className="text-blue-600 hover:text-blue-900 p-1 rounded" title="Modifier">
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(client.id)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded"
-                        title="Supprimer"
-                      >
+                      <button onClick={() => handleDelete(client.id)} className="text-red-600 hover:text-red-900 p-1 rounded" title="Supprimer">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -275,90 +261,42 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
         )}
       </div>
 
-      {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {editingClient ? 'Modifier le Client' : 'Nouveau Client'}
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">{editingClient ? 'Modifier le Client' : 'Nouveau Client'}</h2>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
-                <input
-                  type="text"
-                  value={formData.nom}
-                  onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
+                <input type="text" value={formData.nom} onChange={(e) => setFormData({ ...formData, nom: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
-                <input
-                  type="tel"
-                  value={formData.telephone}
-                  onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: +229 12 34 56 78"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone (WhatsApp wa.me)</label>
+                <input type="tel" value={formData.telephone} onChange={(e) => setFormData({ ...formData, telephone: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="+229 12 34 56 78" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Adresse</label>
-                <input
-                  type="text"
-                  value={formData.adresse}
-                  onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <input type="text" value={formData.adresse} onChange={(e) => setFormData({ ...formData, adresse: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Solde Dette (FCFA)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.soldeDette}
-                  onChange={(e) => setFormData({ ...formData, soldeDette: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0"
-                />
-                <p className="text-xs text-gray-500 mt-1">Laissez à 0 si le client n'a pas de dette</p>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Solde Dette (FCFA)</label>
+                <input type="number" step="0.01" value={formData.soldeDette} onChange={(e) => setFormData({ ...formData, soldeDette: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="0" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={2}
-                  placeholder="Informations complémentaires..."
-                />
+                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={2} />
               </div>
               <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => { resetForm(); setShowForm(false); }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  {editingClient ? 'Modifier' : 'Enregistrer'}
-                </button>
+                <button type="button" onClick={() => { resetForm(); setShowForm(false); }} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingClient ? 'Modifier' : 'Enregistrer'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Detail Modal */}
       {selectedClient && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedClient(null)}>
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
@@ -370,24 +308,22 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
                   </div>
                   <div>
                     <h2 className="text-xl font-semibold text-gray-900">{selectedClient.nom}</h2>
-                    <p className="text-sm text-gray-500">
-                      Client depuis le {new Date(selectedClient.dateCreation).toLocaleDateString('fr-FR')}
-                    </p>
+                    <p className="text-sm text-gray-500">Client depuis le {new Date(selectedClient.dateCreation).toLocaleDateString('fr-FR')}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSelectedClient(null)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                >
-                  &times;
-                </button>
+                <button onClick={() => setSelectedClient(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
               </div>
             </div>
             <div className="p-6 space-y-4">
               {selectedClient.telephone && (
-                <div className="flex items-center space-x-3">
-                  <Phone className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-900">{selectedClient.telephone}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Phone className="h-5 w-5 text-gray-400" />
+                    <span className="text-sm text-gray-900">{selectedClient.telephone}</span>
+                  </div>
+                  <a href={getWhatsappLink(selectedClient.telephone, `Bonjour ${selectedClient.nom} 👋`)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 bg-[#25D366] text-white px-3 py-1.5 rounded-lg text-xs font-bold">
+                    <MessageCircle className="h-4 w-4" /> WhatsApp
+                  </a>
                 </div>
               )}
               {selectedClient.adresse && (
@@ -398,31 +334,14 @@ const ClientsModule: React.FC<ClientsModuleProps> = ({ user }) => {
               )}
               <div className="grid grid-cols-2 gap-4 pt-4">
                 <div className="bg-green-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">Total des Achats</p>
+                  <p className="text-sm text-gray-600">Total Achats</p>
                   <p className="text-xl font-bold text-green-600">{selectedClient.totalAchats.toLocaleString()} FCFA</p>
-                  <p className="text-xs text-gray-500 mt-1">{selectedClient.nombreAchats} achat(s)</p>
                 </div>
                 <div className={`rounded-lg p-4 ${selectedClient.soldeDette > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-                  <p className="text-sm text-gray-600">Dette Actuelle</p>
-                  <p className={`text-xl font-bold ${selectedClient.soldeDette > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {selectedClient.soldeDette.toLocaleString()} FCFA
-                  </p>
-                  {selectedClient.soldeDette > 0 && (
-                    <button
-                      onClick={() => { handleSettleDebt(selectedClient); setSelectedClient(null); }}
-                      className="text-xs text-emerald-600 hover:text-emerald-800 font-medium mt-1"
-                    >
-                      Marquer comme réglée
-                    </button>
-                  )}
+                  <p className="text-sm text-gray-600">Dette</p>
+                  <p className={`text-xl font-bold ${selectedClient.soldeDette > 0 ? 'text-red-600' : 'text-green-600'}`}>{selectedClient.soldeDette.toLocaleString()} FCFA</p>
                 </div>
               </div>
-              {selectedClient.notes && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">Notes</p>
-                  <p className="text-sm text-gray-900">{selectedClient.notes}</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
