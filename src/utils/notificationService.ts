@@ -78,7 +78,7 @@ async function sendViaEdgeFunction(payload: NotificationPayload): Promise<Notifi
   try {
     // 1. Essaie via supabase.functions.invoke si dispo, sinon fetch direct
     // On récupère l'URL de base depuis VITE_SUPABASE_URL
-    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://jtzshtopthamkqpgixcq.supabase.co';
+    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://cieewtsvqfpulkomxdnj.supabase.co';
     const anonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
     const edgeUrl = `${supabaseUrl.replace(/\/$/, '')}/functions/v1/send-notification`;
 

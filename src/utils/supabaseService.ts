@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client
 // Use environment variables if available (for production), otherwise use hardcoded values (for development)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jtzshtopthamkqpgixcq.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0enNodG9wdGhhbWtxcGdpeGNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3ODE2NTcsImV4cCI6MjA2NzM1NzY1N30.jlJ3NW_91M_zMLqZ5BTS-ud6meL3gEqN-tYjlFUsrm8';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://cieewtsvqfpulkomxdnj.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpZWV3dHN2cWZwdWxrb214ZG5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzMjg3NDAsImV4cCI6MjA3ODkwNDc0MH0.fRm3ayhFzRQUN6wB27hb-9item7N-rsNbkB-YEKC25w';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export class SupabaseService {
